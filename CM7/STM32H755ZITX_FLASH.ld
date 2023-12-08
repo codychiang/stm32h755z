@@ -175,6 +175,20 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM_D1
+  
+  /* Modification start */
+  .lwip_sec (NOLOAD) :
+  {
+    . = ABSOLUTE(0x30040000);
+    *(.RxDecripSection) 
+    
+    . = ABSOLUTE(0x30040060);
+    *(.TxDecripSection)
+    
+    . = ABSOLUTE(0x30040200);
+    *(.Rx_PoolSection)  
+  } >RAM_D2
+  /* Modification end */
 
   /* Remove information from the compiler libraries */
   /DISCARD/ :
