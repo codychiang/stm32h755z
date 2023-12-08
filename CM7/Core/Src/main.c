@@ -111,7 +111,7 @@ timeout = 0xFFFF;
 while((__HAL_RCC_GET_FLAG(RCC_FLAG_D2CKRDY) == RESET) && (timeout-- > 0));
 if ( timeout < 0 )
 {
-Error_Handler();
+  Error_Handler();
 }
 /* USER CODE END Boot_Mode_Sequence_2 */
 
@@ -125,7 +125,7 @@ Error_Handler();
   MX_USART3_UART_Init();
   MX_USB_OTG_FS_PCD_Init();
   /* USER CODE BEGIN 2 */
-
+  uint8_t LD_STATE = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -135,6 +135,13 @@ Error_Handler();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, (GPIO_PinState)LD_STATE);
+	HAL_Delay(500);
+	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, (GPIO_PinState)LD_STATE);
+	HAL_Delay(500);
+	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, (GPIO_PinState)LD_STATE);
+	HAL_Delay(500);
+	LD_STATE ^= 1;
   }
   /* USER CODE END 3 */
 }
