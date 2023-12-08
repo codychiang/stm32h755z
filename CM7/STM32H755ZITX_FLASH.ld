@@ -182,7 +182,7 @@ SECTIONS
     . = ABSOLUTE(0x30040000);
     *(.RxDecripSection) 
     
-    . = ABSOLUTE(0x30040060);
+    . = ABSOLUTE(0x30040100);
     *(.TxDecripSection)
     
     . = ABSOLUTE(0x30040200);

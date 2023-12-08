@@ -154,6 +154,7 @@ if ( timeout < 0 )
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+#if 0
 	HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, (GPIO_PinState)LD_STATE);
 	HAL_Delay(500);
 	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, (GPIO_PinState)LD_STATE);
@@ -161,6 +162,7 @@ if ( timeout < 0 )
 	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, (GPIO_PinState)LD_STATE);
 	HAL_Delay(500);
 	LD_STATE ^= 1;
+#endif
   }
   /* USER CODE END 3 */
 }
