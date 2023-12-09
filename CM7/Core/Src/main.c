@@ -66,6 +66,12 @@ void MX_FREERTOS_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+int __io_putchar(int ch)
+{
+    HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, 0xFFFF);
+    return ch;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -139,7 +145,7 @@ if ( timeout < 0 )
   MX_USB_OTG_FS_PCD_Init();
   MX_QUADSPI_Init();
   /* USER CODE BEGIN 2 */
-
+  printf("start...\r\n");
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */
