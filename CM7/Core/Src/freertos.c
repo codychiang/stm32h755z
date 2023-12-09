@@ -113,7 +113,7 @@ void MX_FREERTOS_Init(void) {
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of ledTask */
-  osThreadDef(ledTask, StartLedTask, osPriorityIdle, 0, 128);
+  osThreadDef(ledTask, StartLedTask, osPriorityIdle, 0, 512);
   ledTaskHandle = osThreadCreate(osThread(ledTask), NULL);
 
   /* definition and creation of tcpTask */
