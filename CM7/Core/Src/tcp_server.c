@@ -28,6 +28,7 @@ static err_t tcp_server_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p,
 static void tcp_server_error(void *arg, err_t err);
 
 //https://github.com/freereaper/stm32_lwip/blob/master/USER/tcp_server.c
+//https://github.com/ganioc/ruffnet-fx/blob/master/Src/mytcp.c
 
 void tcp_server_init(void)
 {
@@ -62,17 +63,25 @@ u8_t tcp_rcv[1024];
 int tcp_rcv_idx = 0;
 static err_t tcp_server_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err)
 {
+//	struct tcp_server_struct *es;
+//    err_t ret_err;
+//	es = (struct tcp_server_struct *)arg;
+//	es->p;
+
 	if(p != NULL) {
-		tcp_recved(tpcb, p->tot_len);
+
 		memcpy(tcp_rcv, p->payload, p->tot_len);
 		tcp_rcv[p->tot_len] = 0;
 		lwip_log("get: I:%d N:%d \r\n", tcp_rcv_idx++, p->tot_len);
-      	pbuf_free(p);
+		tcp_recved(tpcb, p->tot_len);
+		pbuf_free(p);
 
 		tcp_write(tpcb, "rsp:", 4, 1);
 		tcp_write(tpcb, tcp_rcv, p->tot_len, 1);
 	}
 	else if(err == ERR_OK) {
+		printf("tcp client closed\r\n");
+		tcp_recved(tpcb, p->tot_len);
 		return tcp_close(tpcb);
 	}
 	else{

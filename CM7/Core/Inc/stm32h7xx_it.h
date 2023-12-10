@@ -54,6 +54,8 @@ void UsageFault_Handler(void);
 void DebugMon_Handler(void);
 void TIM6_DAC_IRQHandler(void);
 void ETH_IRQHandler(void);
+void OTG_FS_EP1_OUT_IRQHandler(void);
+void OTG_FS_EP1_IN_IRQHandler(void);
 void OTG_FS_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 
