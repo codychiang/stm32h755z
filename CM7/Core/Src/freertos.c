@@ -52,6 +52,8 @@
 osThreadId defaultTaskHandle;
 osThreadId ledTaskHandle;
 osThreadId tcpTaskHandle;
+osSemaphoreId myBinarySem_lwipInitHandle;
+osStaticSemaphoreDef_t myBinarySem_lwipInitControlBlock;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -63,6 +65,7 @@ void StartLedTask(void const * argument);
 void StartTcpTask(void const * argument);
 
 extern void MX_LWIP_Init(void);
+extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
 /* GetIdleTaskMemory prototype (linked to static allocation support) */
@@ -94,6 +97,11 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
+
+  /* Create the semaphores(s) */
+  /* definition and creation of myBinarySem_lwipInit */
+  osSemaphoreStaticDef(myBinarySem_lwipInit, &myBinarySem_lwipInitControlBlock);
+  myBinarySem_lwipInitHandle = osSemaphoreCreate(osSemaphore(myBinarySem_lwipInit), 1);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -137,10 +145,15 @@ void StartDefaultTask(void const * argument)
 {
   /* init code for LWIP */
   MX_LWIP_Init();
+
+  /* init code for USB_DEVICE */
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN StartDefaultTask */
   const char* message = "Hello UDP message!\n\r";
 
   osDelay(1000);
+  printf("MX_LWIP_Init\r\n");
+  osSemaphoreRelease(myBinarySem_lwipInitHandle);
 
   ip_addr_t PC_IPADDR;
   IP_ADDR4(&PC_IPADDR, 192, 168, 7, 2);
@@ -199,7 +212,10 @@ void StartLedTask(void const * argument)
 void StartTcpTask(void const * argument)
 {
   /* USER CODE BEGIN StartTcpTask */
+  osSemaphoreWait(myBinarySem_lwipInitHandle, osWaitForever);
+  printf("tcp_server_init\r\n");
   tcp_server_init();
+
   /* Infinite loop */
   for(;;)
   {

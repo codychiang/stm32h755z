@@ -59,14 +59,14 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *new_pcb, err_t err)
 }
 
 u8_t tcp_rcv[1024];
-
+int tcp_rcv_idx = 0;
 static err_t tcp_server_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err)
 {
 	if(p != NULL) {
 		tcp_recved(tpcb, p->tot_len);
 		memcpy(tcp_rcv, p->payload, p->tot_len);
 		tcp_rcv[p->tot_len] = 0;
-		lwip_log("get data from client:%s \r\n", (char*)tcp_rcv);
+		lwip_log("get: I:%d N:%d \r\n", tcp_rcv_idx++, p->tot_len);
       	pbuf_free(p);
 
 		tcp_write(tpcb, "rsp:", 4, 1);
@@ -74,6 +74,9 @@ static err_t tcp_server_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p,
 	}
 	else if(err == ERR_OK) {
 		return tcp_close(tpcb);
+	}
+	else{
+		lwip_log("get: fail \r\n");
 	}
 
 	return ERR_OK;

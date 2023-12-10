@@ -22,7 +22,7 @@
 #include "lwip.h"
 #include "quadspi.h"
 #include "usart.h"
-#include "usb_otg.h"
+#include "usb_device.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -142,10 +142,18 @@ if ( timeout < 0 )
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART3_UART_Init();
-  MX_USB_OTG_FS_PCD_Init();
   MX_QUADSPI_Init();
   /* USER CODE BEGIN 2 */
   printf("start...\r\n");
+
+  /* 32Mä¸²è?Œflash W25Q256??å?‹å?? */
+  //QSPI_FLASH_Init();
+
+  	/* ?Ž·??? Flash Device ID */
+  //è¯»å?–ç?„IDå­˜å‚¨ä½ç½®
+  //__IO uint32_t DeviceID = 0;
+  //DeviceID = QSPI_FLASH_ReadDeviceID();
+
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */
@@ -207,7 +215,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLM = 4;
   RCC_OscInitStruct.PLL.PLLN = 50;
   RCC_OscInitStruct.PLL.PLLP = 2;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
+  RCC_OscInitStruct.PLL.PLLQ = 8;
   RCC_OscInitStruct.PLL.PLLR = 2;
   RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
