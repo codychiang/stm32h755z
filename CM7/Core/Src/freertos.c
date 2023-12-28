@@ -28,6 +28,7 @@
 #include <string.h>
 #include "lwip/udp.h"
 #include "tcp_server.h"
+#include "inFlash.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,11 +48,12 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
+int test1 = 0;
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
 osThreadId ledTaskHandle;
 osThreadId tcpTaskHandle;
+osThreadId inFlashTaskHandle;
 osSemaphoreId myBinarySem_lwipInitHandle;
 osStaticSemaphoreDef_t myBinarySem_lwipInitControlBlock;
 
@@ -63,6 +65,7 @@ osStaticSemaphoreDef_t myBinarySem_lwipInitControlBlock;
 void StartDefaultTask(void const * argument);
 void StartLedTask(void const * argument);
 void StartTcpTask(void const * argument);
+void StartInFlashTask(void const * argument);
 
 extern void MX_LWIP_Init(void);
 extern void MX_USB_DEVICE_Init(void);
@@ -127,6 +130,10 @@ void MX_FREERTOS_Init(void) {
   /* definition and creation of tcpTask */
   osThreadDef(tcpTask, StartTcpTask, osPriorityIdle, 0, 512);
   tcpTaskHandle = osThreadCreate(osThread(tcpTask), NULL);
+
+  /* definition and creation of inFlashTask */
+  osThreadDef(inFlashTask, StartInFlashTask, osPriorityIdle, 0, 256);
+  inFlashTaskHandle = osThreadCreate(osThread(inFlashTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -215,13 +222,61 @@ void StartTcpTask(void const * argument)
   osSemaphoreWait(myBinarySem_lwipInitHandle, osWaitForever);
   printf("tcp_server_init\r\n");
   tcp_server_init();
-
+  extern struct netif gnetif;
+  printf("IP address: %s\n", ip4addr_ntoa(netif_ip4_addr(&gnetif)));
+  
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
+    test1++;
+    if(test1 > 100) test1 = 0;
   }
   /* USER CODE END StartTcpTask */
+}
+
+/* USER CODE BEGIN Header_StartInFlashTask */
+/**
+* @brief Function implementing the inFlashTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartInFlashTask */
+void StartInFlashTask(void const * argument)
+{
+  /* USER CODE BEGIN StartInFlashTask */
+  int debounce = 0;
+  int key = 0;
+  /* Infinite loop */
+  for(;;)
+  {
+	GPIO_PinState pin = HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin);
+	if(GPIO_PIN_SET == pin){
+		debounce++;
+		if(debounce > 5){
+			debounce = 0;
+			key = 1;
+		}
+	}
+
+	if(key == 1){
+#if 0
+		uint32_t wData[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
+		int size = sizeof(wData) / sizeof(wData[0]);
+		uint32_t *rData = malloc(sizeof(wData));
+
+		Internal_WriteFlash(0x80cff00, wData, size);
+		Internal_ReadFlash(0x80cff00, rData, size);
+
+		free(rData);
+#endif
+
+	}
+	key = 0;
+
+    osDelay(1);
+  }
+  /* USER CODE END StartInFlashTask */
 }
 
 /* Private application code --------------------------------------------------*/
