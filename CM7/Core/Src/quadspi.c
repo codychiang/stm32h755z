@@ -1,4 +1,4 @@
-/* USER CODE BEGIN Header */
+﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file    quadspi.c
@@ -38,12 +38,12 @@ void MX_QUADSPI_Init(void)
 
   /* USER CODE END QUADSPI_Init 1 */
   hqspi.Instance = QUADSPI;
-  hqspi.Init.ClockPrescaler = 255;
-  hqspi.Init.FifoThreshold = 1;
-  hqspi.Init.SampleShifting = QSPI_SAMPLE_SHIFTING_NONE;
-  hqspi.Init.FlashSize = 1;
-  hqspi.Init.ChipSelectHighTime = QSPI_CS_HIGH_TIME_1_CYCLE;
-  hqspi.Init.ClockMode = QSPI_CLOCK_MODE_0;
+  hqspi.Init.ClockPrescaler = 9;
+  hqspi.Init.FifoThreshold = 24;
+  hqspi.Init.SampleShifting = QSPI_SAMPLE_SHIFTING_HALFCYCLE;
+  hqspi.Init.FlashSize = 24;
+  hqspi.Init.ChipSelectHighTime = QSPI_CS_HIGH_TIME_6_CYCLE;
+  hqspi.Init.ClockMode = QSPI_CLOCK_MODE_3;
   hqspi.Init.FlashID = QSPI_FLASH_ID_1;
   hqspi.Init.DualFlash = QSPI_DUALFLASH_DISABLE;
   if (HAL_QSPI_Init(&hqspi) != HAL_OK)
@@ -100,7 +100,7 @@ void HAL_QSPI_MspInit(QSPI_HandleTypeDef* qspiHandle)
 
     GPIO_InitStruct.Pin = GPIO_PIN_2;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF9_QUADSPI;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
@@ -114,7 +114,7 @@ void HAL_QSPI_MspInit(QSPI_HandleTypeDef* qspiHandle)
 
     GPIO_InitStruct.Pin = GPIO_PIN_6;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF10_QUADSPI;
     HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
@@ -159,5 +159,55 @@ void HAL_QSPI_MspDeInit(QSPI_HandleTypeDef* qspiHandle)
 }
 
 /* USER CODE BEGIN 1 */
+//QSPI发送命令
+//instruction:要发送的指令
+//address:发送到的目的地址
+//dummyCycles:空指令周期数
+//	instructionMode:指令模式;QSPI_INSTRUCTION_NONE,QSPI_INSTRUCTION_1_LINE,QSPI_INSTRUCTION_2_LINE,QSPI_INSTRUCTION_4_LINE  
+//	addressMode:地址模式; QSPI_ADDRESS_NONE,QSPI_ADDRESS_1_LINE,QSPI_ADDRESS_2_LINE,QSPI_ADDRESS_4_LINE
+//	addressSize:地址长度;QSPI_ADDRESS_8_BITS,QSPI_ADDRESS_16_BITS,QSPI_ADDRESS_24_BITS,QSPI_ADDRESS_32_BITS
+//	dataMode:数据模式; QSPI_DATA_NONE,QSPI_DATA_1_LINE,QSPI_DATA_2_LINE,QSPI_DATA_4_LINE
 
+void QSPI_Send_CMD(uint32_t instruction,uint32_t address,uint32_t dummyCycles,uint32_t instructionMode,uint32_t addressMode,uint32_t addressSize,uint32_t dataMode)
+{
+    QSPI_CommandTypeDef Cmdhandler;
+    
+    Cmdhandler.Instruction=instruction;                 	//指令
+    Cmdhandler.Address=address;                            	//地址
+    Cmdhandler.DummyCycles=dummyCycles;                     //设置空指令周期数
+    Cmdhandler.InstructionMode=instructionMode;				//指令模式
+    Cmdhandler.AddressMode=addressMode;   					//地址模式
+    Cmdhandler.AddressSize=addressSize;   					//地址长度
+    Cmdhandler.DataMode=dataMode;             				//数据模式
+    Cmdhandler.SIOOMode=QSPI_SIOO_INST_EVERY_CMD;       	//每次都发送指令
+    Cmdhandler.AlternateByteMode=QSPI_ALTERNATE_BYTES_NONE; //无交替字节
+    Cmdhandler.DdrMode=QSPI_DDR_MODE_DISABLE;           	//关闭DDR模式
+    Cmdhandler.DdrHoldHalfCycle=QSPI_DDR_HHC_ANALOG_DELAY;
+
+    HAL_QSPI_Command(&hqspi,&Cmdhandler,5000);
+}
+
+//QSPI接收指定长度的数据
+//buf:接收数据缓冲区首地址
+//datalen:要传输的数据长度
+//返回值:0,正常
+//    其他,错误代码
+uint8_t QSPI_Receive(uint8_t* buf,uint32_t datalen)
+{
+    hqspi.Instance->DLR=datalen-1;                           //配置数据长度
+    if(HAL_QSPI_Receive(&hqspi,buf,5000)==HAL_OK) return 0;  //接收数据
+    else return 1;
+}
+
+//QSPI发送指定长度的数据
+//buf:发送数据缓冲区首地址
+//datalen:要传输的数据长度
+//返回值:0,正常
+//    其他,错误代码
+uint8_t QSPI_Transmit(uint8_t* buf,uint32_t datalen)
+{
+    hqspi.Instance->DLR=datalen-1;                            //配置数据长度
+    if(HAL_QSPI_Transmit(&hqspi,buf,5000)==HAL_OK) return 0;  //发送数据
+    else return 1;
+}
 /* USER CODE END 1 */

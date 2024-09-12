@@ -26,7 +26,7 @@
 #define WRITE_START_ADDR        ((uint32_t)0x8000000)
 #define WRITE_END_ADDR          ((uint32_t)0x80fffff)
 
-static uint32_t FlashBuffer[STM32FLASH_PAGE_SIZE / sizeof(uint32_t)];
+static uint8_t FlashBuffer[STM32FLASH_PAGE_SIZE / sizeof(uint8_t)];
 
 /**
  @brief 内部Flash读取
@@ -35,7 +35,7 @@ static uint32_t FlashBuffer[STM32FLASH_PAGE_SIZE / sizeof(uint32_t)];
  @param dataLen -[in] 数据长度
  @return 读出成功的字节数
 */
-uint32_t Internal_ReadFlash(uint32_t addrStart, uint32_t *pData, uint32_t dataLen)
+uint32_t Internal_ReadFlash(uint32_t addrStart, uint8_t *pData, uint32_t dataLen)
 {
     uint32_t nread = dataLen;
     uint8_t *pBuffer = (uint8_t *)pData;
@@ -46,11 +46,11 @@ uint32_t Internal_ReadFlash(uint32_t addrStart, uint32_t *pData, uint32_t dataLe
         return 0;
     }
 
-    while(nread >= 1 && (((uint32_t)pAddr) <= (STM32FLASH_END - 4)))
+    while(nread >= 1 && (((uint32_t)pAddr) <= (STM32FLASH_END - sizeof(uint8_t))))
     {
-        *(uint32_t *)pBuffer = *(uint32_t *)pAddr;
-        pBuffer += sizeof(uint32_t);
-        pAddr += sizeof(uint32_t);
+        *(uint8_t *)pBuffer = *(uint8_t *)pAddr;
+        pBuffer += sizeof(uint8_t);
+        pAddr += sizeof(uint8_t);
         nread--;
     }
 
@@ -70,10 +70,10 @@ uint32_t Internal_ReadFlash(uint32_t addrStart, uint32_t *pData, uint32_t dataLe
  @param dataLen -[in] 数据长度
  @return 实际写入的数据量，单位：字节
 */
-uint32_t Internal_WriteFlashNoCheck(uint32_t addrStart, const uint32_t *pData, uint32_t dataLen)
+uint32_t Internal_WriteFlashNoCheck(uint32_t addrStart, const uint8_t *pData, uint32_t dataLen)
 {
     uint32_t nwrite = dataLen;
-    uint32_t addrmax = STM32FLASH_END - 4;
+    uint32_t addrmax = STM32FLASH_END - sizeof(uint8_t);
 
     while(nwrite)
     {
@@ -82,15 +82,16 @@ uint32_t Internal_WriteFlashNoCheck(uint32_t addrStart, const uint32_t *pData, u
             break;
         }
 
-        HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD, addrStart, (uint32_t)pData);
-        if((*(__IO uint32_t*) addrStart) != *pData)
+        int wSize = sizeof(uint32_t) * STM32FLASH_WRITE_NUM;
+        HAL_FLASH_Program(FLASH_TYPEPROGRAM_FLASHWORD, addrStart, (uint32_t)pData);//write 4*8 bytes
+        if((*(__IO uint8_t*) addrStart) != *pData)
         {
             break;
         }
 
-        nwrite-=STM32FLASH_WRITE_NUM;
-        pData+=STM32FLASH_WRITE_NUM;
-        addrStart += sizeof(uint32_t) * STM32FLASH_WRITE_NUM;
+        nwrite -= wSize;
+        pData += wSize;
+        addrStart += wSize;
     }
     return (dataLen - nwrite);
 }
@@ -102,7 +103,7 @@ uint32_t Internal_WriteFlashNoCheck(uint32_t addrStart, const uint32_t *pData, u
  @param dataLen -[in] 数据长度
  @return 实际写入的数据量，单位：字节
 */
-uint32_t Internal_WriteFlash(uint32_t addrStart, const uint32_t *pData, uint32_t dataLen)
+uint32_t Internal_WriteFlash(uint32_t addrStart, const uint8_t *pData, uint32_t dataLen)
 {
     uint32_t i = 0;
     uint32_t pagepos = 0;         // 页位置
@@ -110,10 +111,10 @@ uint32_t Internal_WriteFlash(uint32_t addrStart, const uint32_t *pData, uint32_t
     uint32_t pagefre = 0;         // 页内空余空间
     uint32_t offset = 0;          // Address在FLASH中的偏移
     uint32_t nwrite = dataLen;    // 记录剩余要写入的数据量
-    const uint32_t *pBuffer = (const uint32_t *)pData;
+    const uint8_t *pBuffer = (const uint8_t *)pData;
 
     /* 非法地址 */
-    if(addrStart < STM32FLASH_BASE || addrStart > (STM32FLASH_END - 4) || dataLen == 0 || pData == NULL)
+    if(addrStart < STM32FLASH_BASE || addrStart > (STM32FLASH_END - sizeof(uint8_t)) || dataLen == 0 || pData == NULL)
     {
         return 0;
     }
@@ -126,9 +127,9 @@ uint32_t Internal_WriteFlash(uint32_t addrStart, const uint32_t *pData, uint32_t
     /* 计算当前页位置 */
     pagepos = offset / STM32FLASH_PAGE_SIZE;
     /* 计算要写数据的起始地址在当前页内的偏移地址 */
-    pageoff = ((offset % STM32FLASH_PAGE_SIZE) / sizeof(uint32_t));
+    pageoff = ((offset % STM32FLASH_PAGE_SIZE) / sizeof(uint8_t));
     /* 计算当前页内空余空间 */
-    pagefre = ((STM32FLASH_PAGE_SIZE / sizeof(uint32_t)) - pageoff);
+    pagefre = ((STM32FLASH_PAGE_SIZE / sizeof(uint8_t)) - pageoff);
     /* 要写入的数据量低于当前页空余量 */
     if(nwrite <= pagefre)
     {
@@ -144,12 +145,12 @@ uint32_t Internal_WriteFlash(uint32_t addrStart, const uint32_t *pData, uint32_t
         }
 
         /* 读取一页 */
-        Internal_ReadFlash(STM32FLASH_BASE + pagepos * STM32FLASH_PAGE_SIZE, FlashBuffer, (STM32FLASH_PAGE_SIZE / sizeof(uint32_t)));
+        Internal_ReadFlash(STM32FLASH_BASE + pagepos * STM32FLASH_PAGE_SIZE, FlashBuffer, (STM32FLASH_PAGE_SIZE / sizeof(uint8_t)));
 
         /* 检查是否需要擦除 */
         for(i = 0; i < pagefre; i++)
         {
-            if(*(FlashBuffer + pageoff + i) != 0xFFFFFFFF) /* FLASH擦出后默认内容全为0xFF */
+            if(*(FlashBuffer + pageoff + i) != 0xFF) /* FLASH擦出后默认内容全为0xFF */
             {
                 break;
             }
@@ -179,8 +180,8 @@ uint32_t Internal_WriteFlash(uint32_t addrStart, const uint32_t *pData, uint32_t
             }
 
             /* 写回FLASH */
-            count = Internal_WriteFlashNoCheck(STM32FLASH_BASE + pagepos * STM32FLASH_PAGE_SIZE, FlashBuffer, (STM32FLASH_PAGE_SIZE / sizeof(uint32_t)));
-            if(count != (STM32FLASH_PAGE_SIZE / sizeof(uint32_t)))
+            count = Internal_WriteFlashNoCheck(STM32FLASH_BASE + pagepos * STM32FLASH_PAGE_SIZE, FlashBuffer, (STM32FLASH_PAGE_SIZE / sizeof(uint8_t)));
+            if(count != (STM32FLASH_PAGE_SIZE / sizeof(uint8_t)))
             {
                 nwrite -= count;
                 break;
@@ -198,20 +199,20 @@ uint32_t Internal_WriteFlash(uint32_t addrStart, const uint32_t *pData, uint32_t
         }
 
         pBuffer += pagefre;         /* 读取地址递增         */
-        addrStart += (pagefre << 1);  /* 写入地址递增         */
+        addrStart += (pagefre / sizeof(uint8_t));  /* 写入地址递增         */
         nwrite -= pagefre;          /* 更新剩余未写入数据量 */
 
         pagepos++;     /* 下一页           */
         pageoff = 0;   /* 页内偏移地址置零  */
 
         /* 根据剩余量计算下次写入数据量 */
-        pagefre = nwrite >= (STM32FLASH_PAGE_SIZE >> 1) ? (STM32FLASH_PAGE_SIZE >> 1) : nwrite;
+        pagefre = nwrite >= (STM32FLASH_PAGE_SIZE / sizeof(uint8_t)) ? (STM32FLASH_PAGE_SIZE / sizeof(uint8_t)) : nwrite;
     }
 
     /* 加锁FLASH */
     HAL_FLASH_Lock();
 
-    return ((dataLen - nwrite) << 1);
+    return ((dataLen - nwrite) / sizeof(uint8_t));
 }
 
 /**

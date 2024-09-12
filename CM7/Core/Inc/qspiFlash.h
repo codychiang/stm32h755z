@@ -143,9 +143,9 @@ uint8_t BSP_QSPI_FastRead(uint8_t* pData, uint32_t ReadAddr, uint32_t Size);
 uint8_t BSP_QSPI_Write(uint8_t* pData, uint32_t WriteAddr, uint32_t Size);
 
 uint8_t BSP_QSPI_Erase_Chip(void);
-static uint8_t QSPI_ResetMemory          (void);
-static uint8_t QSPI_WriteEnable          (void);
-static uint8_t QSPI_AutoPollingMemReady  (uint32_t Timeout);
+uint8_t QSPI_ResetMemory          (void);
+uint8_t QSPI_WriteEnable          (void);
+uint8_t QSPI_AutoPollingMemReady  (uint32_t Timeout);
 
 uint32_t QSPI_FLASH_ReadDeviceID(void);
 uint32_t QSPI_FLASH_ReadID(void);

@@ -60,7 +60,7 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *new_pcb, err_t err)
 	return ERR_OK;
 }
 
-u8_t tcp_rcv[2048];
+uint8_t tcp_rcv[2048];
 int tcp_rcv_idx = 0;
 static err_t tcp_server_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err)
 {

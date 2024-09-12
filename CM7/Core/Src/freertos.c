@@ -29,6 +29,8 @@
 #include "lwip/udp.h"
 #include "tcp_server.h"
 #include "inFlash.h"
+#include "qspiFlash.h"
+#include "w25q256.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -120,15 +122,15 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 512);
+  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 256);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* definition and creation of ledTask */
-  osThreadDef(ledTask, StartLedTask, osPriorityIdle, 0, 512);
+  osThreadDef(ledTask, StartLedTask, osPriorityIdle, 0, 256);
   ledTaskHandle = osThreadCreate(osThread(ledTask), NULL);
 
   /* definition and creation of tcpTask */
-  osThreadDef(tcpTask, StartTcpTask, osPriorityIdle, 0, 512);
+  osThreadDef(tcpTask, StartTcpTask, osPriorityIdle, 0, 256);
   tcpTaskHandle = osThreadCreate(osThread(tcpTask), NULL);
 
   /* definition and creation of inFlashTask */
@@ -260,15 +262,51 @@ void StartInFlashTask(void const * argument)
 	}
 
 	if(key == 1){
-#if 0
-		uint32_t wData[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
-		int size = sizeof(wData) / sizeof(wData[0]);
-		uint32_t *rData = malloc(sizeof(wData));
+#if 0 //internal flash test       
+		const int size = 256;
+		uint8_t wData[size];
+        for(int i = 0; i < size; i++) wData[i] = i;
+		uint8_t *rData = pvPortMalloc(size);
 
-		Internal_WriteFlash(0x80cff00, wData, size);
-		Internal_ReadFlash(0x80cff00, rData, size);
+		Internal_WriteFlash(0x80fff00, wData, size);
+		Internal_ReadFlash(0x80fff00, rData, size);
 
-		free(rData);
+        vPortFree(rData);
+#endif
+
+#if 1
+        HAL_GPIO_WritePin(SpiFlashEnable_GPIO_Port, SpiFlashEnable_Pin, GPIO_PIN_SET);
+        bool initOK = W25Q256_Init(W25Q256);
+        if(initOK){
+            printf("detected flash\n");
+            uint32_t addr = 0;
+            uint8_t *pData = malloc(W25_oneSector);
+            uint8_t *pErasedData = malloc(W25_oneSector);
+            if(pData){
+                
+                W25Q256_Read(pData, addr, W25_oneSector);
+                W25Q256_Erase_Sector(addr / W25_oneSector);
+                W25Q256_Read(pErasedData, addr, W25_oneSector);
+
+                W25Q256_Erase_Sector(addr / W25_oneSector);
+                W25Q256_Write_NoCheck(pData, addr, W25_oneSector);
+                W25Q256_Read(pErasedData, addr, W25_oneSector);
+                if(0 == memcmp(pErasedData, pData, W25_oneSector)){
+                    printf("Write success\n");
+                }
+                
+                free(pData);
+                free(pErasedData);
+            }
+
+
+        
+        }
+        else{
+            printf("no flash\n");
+        }    
+
+
 #endif
 
 	}

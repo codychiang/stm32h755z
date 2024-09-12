@@ -156,12 +156,15 @@ uint8_t BSP_QSPI_Init(void)
 	QSPI_CommandTypeDef s_command;
 	uint8_t value = 0x06;
 
+    uint32_t id = QSPI_FLASH_ReadDeviceID();
+    printf("flash ID=%x\r\n", (unsigned int)id);
+
 	/* QSPI存储器复位 */
 	if (QSPI_ResetMemory() != QSPI_OK)
 	{
 		return QSPI_NOT_SUPPORTED;
 	}
-  //进入四字节模式（**）
+    //进入四字节模式（**）
 	QSPI_EnterFourBytesAddress();
 	/* 使能写操作 */
 	if (QSPI_WriteEnable() != QSPI_OK)
@@ -517,7 +520,7 @@ uint8_t BSP_QSPI_GetInfo(QSPI_Info* pInfo)
   * @param  QSPIHandle: QSPI句柄
   * @retval 无
   */
-static uint8_t QSPI_ResetMemory()
+uint8_t QSPI_ResetMemory()
 {
 	QSPI_CommandTypeDef s_command;
 	/* 初始化复位使能命令 */
@@ -558,7 +561,7 @@ static uint8_t QSPI_ResetMemory()
   * @param  QSPIHandle: QSPI句柄
   * @retval 无
   */
-static uint8_t QSPI_WriteEnable()
+uint8_t QSPI_WriteEnable()
 {
 	QSPI_CommandTypeDef     s_command;
 	QSPI_AutoPollingTypeDef s_config;
@@ -602,7 +605,7 @@ static uint8_t QSPI_WriteEnable()
   * @param  Timeout 超时
   * @retval 无
   */
-static uint8_t QSPI_AutoPollingMemReady(uint32_t Timeout)
+uint8_t QSPI_AutoPollingMemReady(uint32_t Timeout)
 {
 	QSPI_CommandTypeDef     s_command;
 	QSPI_AutoPollingTypeDef s_config;
@@ -659,19 +662,13 @@ uint32_t QSPI_FLASH_ReadID(void)
 	{
 		printf("something wrong ....\r\n");
 		/* 用户可以在这里添加一些代码来处理这个错误 */
-		while(1)
-		{
 
-		}
 	}
 	if (HAL_QSPI_Receive(&QSPIHandle, pData, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
 	{
 		printf("something wrong ....\r\n");
 		/* 用户可以在这里添加一些代码来处理这个错误 */
-		while(1)
-		{
 
-		}
 	}
 
 	Temp = ( pData[2] | pData[1]<<8 )| ( pData[0]<<16 );
@@ -708,19 +705,19 @@ uint32_t QSPI_FLASH_ReadDeviceID(void)
 	{
 		printf("something wrong ....\r\n");
 		/* 用户可以在这里添加一些代码来处理这个错误 */
-		while(1)
-		{
-
-		}
+//		while(1)
+//		{
+//
+//		}
 	}
 	if (HAL_QSPI_Receive(&QSPIHandle, pData, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK)
 	{
 		printf("something wrong ....\r\n");
 		/* 用户可以在这里添加一些代码来处理这个错误 */
-		while(1)
-		{
-
-		}
+//		while(1)
+//		{
+//
+//		}
 	}
 
 	Temp = pData[1] |( pData[0]<<8 ) ;
