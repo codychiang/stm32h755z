@@ -1,4 +1,4 @@
-﻿/* USER CODE BEGIN Header */
+/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file    quadspi.h
@@ -41,9 +41,9 @@ extern QSPI_HandleTypeDef hqspi;
 void MX_QUADSPI_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-void QSPI_Send_CMD(uint32_t instruction,uint32_t address,uint32_t dummyCycles,uint32_t instructionMode,uint32_t addressMode,uint32_t addressSize,uint32_t dataMode);
-uint8_t QSPI_Transmit(uint8_t* buf,uint32_t datalen);
-uint8_t QSPI_Receive(uint8_t* buf,uint32_t datalen);
+HAL_StatusTypeDef QSPI_Send_CMD(uint32_t instruction,uint32_t address,uint32_t dummyCycles,uint32_t instructionMode,uint32_t addressMode,uint32_t addressSize,uint32_t dataMode);
+HAL_StatusTypeDef QSPI_Transmit(uint8_t* buf,uint32_t datalen);
+HAL_StatusTypeDef QSPI_Receive(uint8_t* buf,uint32_t datalen);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

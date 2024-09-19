@@ -10,6 +10,8 @@
 
 #include "tcp_server.h"
 #include "string.h"
+#include "stdbool.h"
+#include "cmdParser.h"
 
 #define DEBUG_LWIP   1
 #define TCP_SERVER_PORT (51000)
@@ -60,8 +62,9 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *new_pcb, err_t err)
 	return ERR_OK;
 }
 
-uint8_t tcp_rcv[2048];
-int tcp_rcv_idx = 0;
+#define tcp_rcv_cmd_maxSize (4096 + 100)
+uint8_t tcp_rcv_cmd[tcp_rcv_cmd_maxSize];
+int tcp_rcv_cmd_idx = 0;
 static err_t tcp_server_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err)
 {
 //	struct tcp_server_struct *es;
@@ -70,21 +73,55 @@ static err_t tcp_server_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p,
 //	es->p;
 
 	if(p != NULL) {
+#if 1
+        uint8_t *pCmd = p->payload;
+        int pCmdSize = p->tot_len;
+        printf("\ncmd rcv: \n");
+		for(int i = 0; i < pCmdSize; i++){
+		    printf("%02X ", pCmd[i]);
+            if(i % 20 == 19) printf("\n");
+        }
+        printf("\n");
+
+        if((tcp_rcv_cmd_idx + pCmdSize) > tcp_rcv_cmd_maxSize){
+            tcp_rcv_cmd_idx = 0;
+        }
+        else{
+    		memcpy(&tcp_rcv_cmd[tcp_rcv_cmd_idx], pCmd, pCmdSize);
+            tcp_rcv_cmd_idx += pCmdSize;
+            if(checkProtocol(tcp_rcv_cmd, tcp_rcv_cmd_idx)){
+                tcp_rcv_cmd_idx = 0;
+                printf("parser OK\n");
+
+                //uint8_t tag = pCmd[1];
+                uint8_t *retData;
+                int retSize;
+                tcpCmdParser(tcp_rcv_cmd, tcp_rcv_cmd_idx, &retData, &retSize);
+                if(ERR_OK != tcp_write(tpcb, retData, retSize, 1)){
+                    printf("tcp write fail, tcp_sndbuf=%d\n", tcp_sndbuf(tpcb));
+                }
+            }
+        }
+
+
+#endif
+
+#if 0    
 		int returnDataLen = (p->tot_len > 2048)? 2048: p->tot_len;
-		memcpy(tcp_rcv, p->payload, returnDataLen);
-		tcp_rcv[p->tot_len] = 0;
+		memcpy(tcp_rcv_cmd, p->payload, returnDataLen);
+		tcp_rcv_cmd[p->tot_len] = 0;
 		int showLen = (p->tot_len > 30)? 30: p->tot_len;
-		lwip_log("get: I:%d N:%d\r\n", tcp_rcv_idx++, p->tot_len);
+		lwip_log("get: I:%d N:%d\r\n", tcp_rcv_cmd_idx++, p->tot_len);
 		for(int i = 0; i < showLen; i++){
-			lwip_log("%02X ", tcp_rcv[i]);
+			lwip_log("%02X ", tcp_rcv_cmd[i]);
 		}
 		lwip_log("\r\n");
 
 		char tcpRsp[100];
 		sprintf(tcpRsp, "stm32: rcv %d\n", p->tot_len);
 		tcp_write(tpcb, tcpRsp, strlen((char*)tcpRsp), 1);
-		tcp_write(tpcb, tcp_rcv, p->tot_len, 1);
-
+		tcp_write(tpcb, tcp_rcv_cmd, p->tot_len, 1);
+#endif
 		tcp_recved(tpcb, p->tot_len);
 		pbuf_free(p);
 	}

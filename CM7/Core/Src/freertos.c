@@ -130,11 +130,11 @@ void MX_FREERTOS_Init(void) {
   ledTaskHandle = osThreadCreate(osThread(ledTask), NULL);
 
   /* definition and creation of tcpTask */
-  osThreadDef(tcpTask, StartTcpTask, osPriorityIdle, 0, 256);
+  osThreadDef(tcpTask, StartTcpTask, osPriorityIdle, 0, 1024);
   tcpTaskHandle = osThreadCreate(osThread(tcpTask), NULL);
 
   /* definition and creation of inFlashTask */
-  osThreadDef(inFlashTask, StartInFlashTask, osPriorityIdle, 0, 256);
+  osThreadDef(inFlashTask, StartInFlashTask, osPriorityIdle, 0, 1024);
   inFlashTaskHandle = osThreadCreate(osThread(inFlashTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
@@ -274,6 +274,75 @@ void StartInFlashTask(void const * argument)
         vPortFree(rData);
 #endif
 
+#if 0
+    uint8_t status2;
+    uint8_t status1;
+    uint8_t busy = 1;
+
+    W25Q256_ReadSR(1, &status2); printf("status1=0x%x\n", status2);
+    W25Q256_ReadSR(2, &status2); printf("status2=0x%x\n", status2);
+    W25Q256_ReadSR(3, &status2); printf("status3=0x%x\n", status2);
+
+    W25Q256_ReadSR(1, &status2); printf("status1=0x%x\n", status2);
+    //W25Q256_WriteVSR_Enable();
+    W25Q256_Write_Enable();
+    W25Q256_ReadSR_1(&status2); printf("status1=0x%x\n", status2);
+    W25Q256_ReadSR_2(&status2); printf("status2=0x%x\n", status2);
+    W25Q256_Write_SR_2(0x0);
+    W25Q256_ReadSR_1(&status2); printf("status1=0x%x\n", status2);
+    W25Q256_ReadSR_2(&status2); printf("status2=0x%x\n", status2);
+
+    
+    uint32_t jedecDeviceId;
+    W25Q256_JedecID(&jedecDeviceId);
+    printf("jedecDeviceId=0x%x\n", jedecDeviceId);    
+    W25Q256_Write_Enable();
+    W25Q256_Write_ExtendedAddress(0);
+    uint8_t readBuf[256];
+    W25Q256_FastRead_1L(readBuf, 0, 256);  
+    printf("rx: ");
+    for(int i = 0; i < 256; i++){
+	    printf("%02X ", readBuf[i]);
+        if(i % 32 == 31) printf("\n");
+    }
+    printf("\n");             
+    
+    W25Q256_Write_Enable();
+    W25Q256_ReadSR(1, &status2); printf("status1=0x%x\n", status2);
+    W25Q256_32KB_Block_Erase(0);
+    busy = 1;
+    printf("status1: ");
+    while(busy){    
+        W25Q256_ReadSR_1(&status1);
+        busy = status1 & 0x01;
+        printf(" 0x%x", status1);
+        if(busy == 0) printf("\n");
+    }
+//    W25Q256_Write_Enable();
+//    uint8_t writeBuf[256];
+//    for(int i = 0; i < 256; i++){
+//        writeBuf[0] = i;
+//    }
+//    W25Q256_Write_OnePage(writeBuf, 0, 256);
+    busy = 1;
+    printf("status1: ");
+    while(busy){    
+        W25Q256_ReadSR_1(&status1);
+        busy = status1 & 0x01;
+        printf(" 0x%x", status1);
+        if(busy == 0) printf("\n");
+    }
+    W25Q256_FastRead_1L(readBuf, 0, 256);     
+    printf("rx: ");
+    for(int i = 0; i < 256; i++){
+	    printf("%02X ", readBuf[i]);
+        if(i % 32 == 31) printf("\n");
+    }
+    printf("\n");             
+
+
+#endif
+
 #if 1
         HAL_GPIO_WritePin(SpiFlashEnable_GPIO_Port, SpiFlashEnable_Pin, GPIO_PIN_SET);
         bool initOK = W25Q256_Init(W25Q256);
@@ -283,30 +352,32 @@ void StartInFlashTask(void const * argument)
             uint8_t *pData = malloc(W25_oneSector);
             uint8_t *pErasedData = malloc(W25_oneSector);
             if(pData){
-                
-                W25Q256_Read(pData, addr, W25_oneSector);
+                uint8_t status2;
+                W25Q256_ReadSR(1, &status2); printf("status1=0x%x\n", status2);
+                W25Q256_ReadSR(2, &status2); printf("status2=0x%x\n", status2);
+                W25Q256_ReadSR(3, &status2); printf("status3=0x%x\n", status2);
+            
+                W25Q256_FastRead(pData, addr, W25_oneSector);
                 W25Q256_Erase_Sector(addr / W25_oneSector);
-                W25Q256_Read(pErasedData, addr, W25_oneSector);
+                W25Q256_FastRead(pErasedData, addr, W25_oneSector);
+                for(int i = 0; i < W25_oneSector; i++){
+                    pErasedData[i] = i;
+                }                
 
                 W25Q256_Erase_Sector(addr / W25_oneSector);
-                W25Q256_Write_NoCheck(pData, addr, W25_oneSector);
-                W25Q256_Read(pErasedData, addr, W25_oneSector);
+                W25Q256_Write_NoCheck(pErasedData, addr, W25_oneSector);
+                W25Q256_FastRead(pErasedData, addr, W25_oneSector);
                 if(0 == memcmp(pErasedData, pData, W25_oneSector)){
                     printf("Write success\n");
                 }
                 
                 free(pData);
                 free(pErasedData);
-            }
-
-
-        
+            }        
         }
         else{
             printf("no flash\n");
-        }    
-
-
+        }
 #endif
 
 	}

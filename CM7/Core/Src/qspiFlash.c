@@ -156,9 +156,6 @@ uint8_t BSP_QSPI_Init(void)
 	QSPI_CommandTypeDef s_command;
 	uint8_t value = 0x06;
 
-    uint32_t id = QSPI_FLASH_ReadDeviceID();
-    printf("flash ID=%x\r\n", (unsigned int)id);
-
 	/* QSPI存储器复位 */
 	if (QSPI_ResetMemory() != QSPI_OK)
 	{
