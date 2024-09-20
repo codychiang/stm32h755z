@@ -352,28 +352,21 @@ void StartInFlashTask(void const * argument)
             uint8_t *pData = malloc(W25_oneSector);
             uint8_t *pErasedData = malloc(W25_oneSector);
             if(pData){
-                uint8_t status2;
-                W25Q256_ReadSR(1, &status2); printf("status1=0x%x\n", status2);
-                W25Q256_ReadSR(2, &status2); printf("status2=0x%x\n", status2);
-                W25Q256_ReadSR(3, &status2); printf("status3=0x%x\n", status2);
-            
-                W25Q256_FastRead(pData, addr, W25_oneSector);
+                
+                W25Q256_Read(pData, addr, W25_oneSector);
                 W25Q256_Erase_Sector(addr / W25_oneSector);
-                W25Q256_FastRead(pErasedData, addr, W25_oneSector);
-                for(int i = 0; i < W25_oneSector; i++){
-                    pErasedData[i] = i;
-                }                
+                W25Q256_Read(pErasedData, addr, W25_oneSector);
 
-                W25Q256_Erase_Sector(addr / W25_oneSector);
-                W25Q256_Write_NoCheck(pErasedData, addr, W25_oneSector);
-                W25Q256_FastRead(pErasedData, addr, W25_oneSector);
+                for(int i = 0; i < 256; i++) pData[i] = i;
+                W25Q256_Write_NoCheck(pData, addr, W25_oneSector);
+                W25Q256_Read(pErasedData, addr, W25_oneSector);
                 if(0 == memcmp(pErasedData, pData, W25_oneSector)){
                     printf("Write success\n");
                 }
                 
                 free(pData);
                 free(pErasedData);
-            }        
+            }
         }
         else{
             printf("no flash\n");
