@@ -65,6 +65,7 @@ uint8_t W25Q256_ReadSR(uint8_t regno);             //读取状态寄存器
 void W25Q256_4ByteAddr_Enable(void);     //使能4字节地址模式
 bool W25Q256_XFER(uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize);
 bool W25Q256_Write_SR(uint8_t regno,uint8_t sr);   //写状态寄存器
+bool W25Q256_setReadParam();
 void W25Q256_Write_Enable(void);  		//写使能 
 void W25Q256_Write_Disable(void);		//写保护
 bool W25Q256_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite);

@@ -19,8 +19,8 @@
 #define brPURPLEMsg(X) BrightPURPLE X MCOLOR_NONE
 #define mPlayerMsg(X)  BrightCYAN X MCOLOR_NONE
 
-#define W25Q256_DBGINFO_GENERALCMD_ENABLE (1)
-#define W25Q256_DBGINFO_CMD_ENABLE (1)
+#define W25Q256_DBGINFO_GENERALCMD_ENABLE (0)
+#define W25Q256_DBGINFO_CMD_ENABLE (0)
 
  
 uint8_t W25Q256_QPI_MODE=0;		//QSPI模式标志:0,SPI模式;1,QPI模式.
@@ -48,7 +48,7 @@ bool W25Q256_Init(uint16_t preferKind)
     uint16_t W25Q256_TYPE = 0;	//默认是W25Q256
     uint32_t W25Q256_JEDECID = 0;	//默认是W25Q256
 
-//    W25Q256_Qspi_Enable();			//使能QSPI模式
+    W25Q256_Qspi_Enable();			//使能QSPI模式
     showStatus();
 
     if(!W25Q256_JedecID(&W25Q256_JEDECID)) return false;	//读取FLASH ID.
@@ -60,7 +60,7 @@ bool W25Q256_Init(uint16_t preferKind)
 	//printf("ID:%x\r\n",W25Q256_TYPE);
 	if(W25Q256_TYPE==preferKind)        //SPI FLASH为W25Q256
     {
- 	      uint8_t temp;
+// 	      uint8_t temp;
 //        temp=W25Q256_ReadSR(3);      //读取状态寄存器3，判断地址模式
 //        if((temp&0X01)==0)			//如果不是4字节地址模式,则进入4字节地址模式
 //		{
@@ -74,14 +74,14 @@ bool W25Q256_Init(uint16_t preferKind)
 //		}
 //		W25Q256_Write_Enable();		//写使能
 
-    	if(W25Q256_QPI_MODE){		
-    		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_4_LINES); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
-        }
-        else{
-    		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_1_LINE); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
-        }
-		temp=3<<4;					//设置P4&P5=11,8个dummy clocks,104M
-		QSPI_Transmit(&temp,1);		//发送1个字节
+//    	if(W25Q256_QPI_MODE){		
+//    		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_4_LINES); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
+//        }
+//        else{
+//    		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_1_LINE); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
+//        }
+//		temp=3<<4;					//设置P4&P5=11,8个dummy clocks,104M
+//		QSPI_Transmit(&temp,1);		//发送1个字节
 
         return true;
     }
@@ -91,24 +91,41 @@ bool W25Q256_Init(uint16_t preferKind)
 //W25Q256进入QSPI模式 
 void W25Q256_Qspi_Enable(void)
 {
+#if 1
 	printf("%s\n", __func__);
-	uint8_t stareg2;
+#endif
+	uint8_t stareg1, stareg2;
     stareg2=W25Q256_ReadSR(2);		//先读出状态寄存器2的原始值
+#if W25Q256_DBGINFO_CMD_ENABLE
 	printf("%s=>1 stareg2=0x%x\n", __func__, stareg2);    
-	if((stareg2&0X02)==0x00)			//QE位未使能
+#endif
+	//if((stareg2&0X02)==0x00)			//QE位未使能
 	{
 		//W25Q256_WriteVolatile_Enable();		//写使能 
 		W25Q256_Write_Enable();
+        stareg1=W25Q256_ReadSR(1);		//先读出状态寄存器2的原始值
+#if W25Q256_DBGINFO_CMD_ENABLE
+    	printf("%s=>1 stareg1=0x%x\n", __func__, stareg1);
+#endif
+        
 //		stareg2 &= 0x87;
 //		stareg2 |= 0x02;				//使能QE位
 		stareg2 = 0x02;
 		W25Q256_Write_SR(2,stareg2);	//写状态寄存器2
+		
+        stareg1=W25Q256_ReadSR(1);		//先读出状态寄存器2的原始值
+#if W25Q256_DBGINFO_CMD_ENABLE
+    	printf("%s=>1 stareg1=0x%x\n", __func__, stareg1);
+#endif
 	}
     stareg2=W25Q256_ReadSR(2);		//先读出状态寄存器2的原始值
+#if W25Q256_DBGINFO_CMD_ENABLE
 	printf("%s=>2 stareg2=0x%x\n", __func__, stareg2);
+#endif
+    W25Q256_setReadParam();
 
-	QSPI_Send_CMD(W25X_EnterQPIMode,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_NONE);//写command指令,地址为0,无数据_8位地址_无地址_单线传输指令,无空周期,0个字节数据
-	W25Q256_QPI_MODE=1;				//标记QSPI模式
+//	QSPI_Send_CMD(W25X_EnterQPIMode,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_NONE);//写command指令,地址为0,无数据_8位地址_无地址_单线传输指令,无空周期,0个字节数据
+//	W25Q256_QPI_MODE=1;				//标记QSPI模式
 }
 
 //W25Q256退出QSPI模式 
@@ -216,10 +233,41 @@ bool W25Q256_Write_SR(uint8_t regno,uint8_t sr)
 	return true;
 }  
 
+bool W25Q256_setReadParam()
+{
+	uint8_t readParam=3<<4;					//设置P4&P5=11,8个dummy clocks,104M
+#if 1
+	if(W25Q256_QPI_MODE){
+        if(!W25Q256_GeneralCmd(W25X_SetReadParam, QSPI_INSTRUCTION_4_LINES, QSPI_DATA_4_LINES, QSPI_ADDRESS_NONE, QSPI_ADDRESS_8_BITS,
+                                   0/*address*/, 0/*dummyCycles*/, &readParam/*txData*/, 1/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
+	}
+    else{
+        if(!W25Q256_GeneralCmd(W25X_SetReadParam, QSPI_INSTRUCTION_1_LINE, QSPI_DATA_1_LINE, QSPI_ADDRESS_NONE, QSPI_ADDRESS_8_BITS,
+                                  0/*address*/, 0/*dummyCycles*/, &readParam/*txData*/, 1/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
+    }
+
+#else
+	if(W25Q256_QPI_MODE){		
+		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_4_LINES); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
+    }
+    else{
+		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_1_LINE); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
+    }
+	readParam=3<<4;					//设置P4&P5=11,8个dummy clocks,104M
+	QSPI_Transmit(&readParam,1);		//发送1个字节
+#endif
+
+    return true;
+}
+
 //W25Q256写使能	
 //将S1寄存器的WEL置位   
 void W25Q256_Write_Enable(void)   
 {
+#if W25Q256_DBGINFO_CMD_ENABLE
+    printf("%s\n", __func__);
+#endif
+    
 	if(W25Q256_QPI_MODE)
         QSPI_Send_CMD(W25X_WriteEnable,0,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_NONE);  //QPI,写使能指令,地址为0,无数据_8位地址_无地址_4线传输指令,无空周期,0个字节数据
 	else 
@@ -333,7 +381,9 @@ bool W25Q256_ReadID(uint16_t *pDeviceid)
 
 bool W25Q256_JedecID(uint32_t *pJedecDeviceId)
 {
+#if W25Q256_DBGINFO_CMD_ENABLE
     printf(infoMsg("%s %dLine\n"), __func__, (W25Q256_QPI_MODE? 4: 1));
+#endif
 
     *pJedecDeviceId = 0;
 	uint8_t rxData[3];
@@ -401,7 +451,9 @@ bool W25Q256_Read(uint8_t* pBuffer,uint32_t ReadAddr,uint16_t NumByteToRead)
 
 bool W25Q256_Read(uint8_t* pBuffer,uint32_t ReadAddr,uint16_t NumByteToRead)   
 {
+#if W25Q256_DBGINFO_CMD_ENABLE
     printf("%s\n", __func__);
+#endif
     if(W25Q256_QPI_MODE){
         if(!W25Q256_GeneralCmd(W25X_FastReadData, QSPI_INSTRUCTION_4_LINES, QSPI_DATA_4_LINES, QSPI_ADDRESS_4_LINES, W25Q256_Addr_MODE,
                                    ReadAddr/*address*/, 8/*dummyCycles*/, 0/*txData*/, 0/*txSize*/, pBuffer/*rxData*/, NumByteToRead/*rxSize*/)) return false;
@@ -518,7 +570,9 @@ bool W25Q256_Write_PageBase(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByte
 #else
 bool W25Q256_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
 {
+#if W25Q256_DBGINFO_CMD_ENABLE
     printf("%s\n", __func__);
+#endif
 	W25Q256_Write_Enable();					//写使能
 
 	if(W25Q256_QPI_MODE){
@@ -537,8 +591,9 @@ bool W25Q256_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWr
 
 bool W25Q256_Write_PageBase(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
 {
+#if W25Q256_DBGINFO_CMD_ENABLE
     printf("%s\n", __func__);
-
+#endif
 	if(W25Q256_QPI_MODE){
         if(!W25Q256_GeneralCmd(W25X_PageProgram, QSPI_INSTRUCTION_4_LINES, QSPI_DATA_4_LINES, QSPI_ADDRESS_4_LINES, W25Q256_Addr_MODE,
                                    WriteAddr/*address*/, 0/*dummyCycles*/, pBuffer/*txData*/, NumByteToWrite/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
@@ -827,15 +882,15 @@ bool W25Q256_Enable()
     HAL_GPIO_WritePin(SpiFlashEnable_GPIO_Port, SpiFlashEnable_Pin, GPIO_PIN_SET);
     W25Q256_Qspi_Enable();    
 
-    uint8_t temp = 0;
-	if(W25Q256_QPI_MODE){		
-		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_4_LINES); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
-    }
-    else{
-		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_1_LINE); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
-    }
-	temp=3<<4;					//设置P4&P5=11,8个dummy clocks,104M
-	QSPI_Transmit(&temp,1);		//发送1个字节
+//    uint8_t temp = 0;
+//	if(W25Q256_QPI_MODE){		
+//		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_4_LINES); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
+//    }
+//    else{
+//		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_1_LINE); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
+//    }
+//	temp=3<<4;					//设置P4&P5=11,8个dummy clocks,104M
+//	QSPI_Transmit(&temp,1);		//发送1个字节
 
 
     return true;

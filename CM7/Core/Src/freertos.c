@@ -356,21 +356,21 @@ void StartInFlashTask(void const * argument)
             if(pData){
                 
                 W25Q256_Read(pData, addr, size);
-                W25Q256_Erase_Sector(addr / W25_oneSector);
-                W25Q256_Read(pErasedData, addr, size);
+//                W25Q256_Erase_Sector(addr / W25_oneSector);
+//                W25Q256_Read(pErasedData, addr, size);
 
-                for(int i = 0; i < size; i++) pData[i] = (uint8_t)(i);
-                pData[0] = 0x55 + inc;
-                pData[size - 1] = 0x22;
+//                for(int i = 0; i < size; i++) pData[i] = (uint8_t)(i);
+//                pData[0] = 0x55 + inc;
+//                pData[size - 1] = 0x22;
                 
-                W25Q256_Write_NoCheck(pData, addr, size);
-                W25Q256_Read(pErasedData, addr, size);
-                if(0 == memcmp(pErasedData, pData, size)){
-                    printf("Write/Verify success\n");
-                }
-                else{
-                    printf("Write/Verify fail\n");
-                }
+//                W25Q256_Write_NoCheck(pData, addr, size);
+//                W25Q256_Read(pErasedData, addr, size);
+//                if(0 == memcmp(pErasedData, pData, size)){
+//                    printf("Write/Verify success\n");
+//                }
+//                else{
+//                    printf("Write/Verify fail\n");
+//                }
                 
                 free(pData);
                 free(pErasedData);
