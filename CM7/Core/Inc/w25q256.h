@@ -33,8 +33,10 @@
 #define W25X_WriteStatusReg3  0x11 
 #define W25X_ReadData			    0x03 
 #define W25X_FastReadData		  0x0B 
+#define W25X_QuadFastReadData	  0xEB 
 #define W25X_FastReadDual		  0x3B 
 #define W25X_PageProgram		  0x02 
+#define W25X_QuadPageProgram      0x32 
 #define W25X_BlockErase			  0xD8 
 #define W25X_SectorErase		  0x20 
 #define W25X_ChipErase			  0xC7 
@@ -62,14 +64,23 @@ bool W25Q256_JedecID(uint32_t *pJedecDeviceId);
 uint8_t W25Q256_ReadSR(uint8_t regno);             //读取状态寄存器 
 void W25Q256_4ByteAddr_Enable(void);     //使能4字节地址模式
 bool W25Q256_XFER(uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize);
-void W25Q256_Write_SR(uint8_t regno,uint8_t sr);   //写状态寄存器
+bool W25Q256_Write_SR(uint8_t regno,uint8_t sr);   //写状态寄存器
 void W25Q256_Write_Enable(void);  		//写使能 
 void W25Q256_Write_Disable(void);		//写保护
-void W25Q256_Write_NoCheck(uint8_t* pBuffer,uint32_t WriteAddr,u16_t NumByteToWrite);//写flash,不校验
-void W25Q256_Read(uint8_t* pBuffer,uint32_t ReadAddr,u16_t NumByteToRead);   //读取flash
-void W25Q256_Write(uint8_t* pBuffer,uint32_t WriteAddr,u16_t NumByteToWrite);//写入flash
+bool W25Q256_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite);
+bool W25Q256_Write_PageBase(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite);
+bool W25Q256_Quad_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite);
+bool W25Q256_Quad_Write_PageBase(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite);
+bool W25Q256_Write_NoCheck(uint8_t* pBuffer,uint32_t WriteAddr,u16_t NumByteToWrite);//写flash,不校验
+bool W25Q256_Read(uint8_t* pBuffer,uint32_t ReadAddr,u16_t NumByteToRead);   //读取flash
+bool W25Q256_Quad_Read(uint8_t* pBuffer,uint32_t ReadAddr,uint16_t NumByteToRead);
+bool W25Q256_Write(uint8_t* pBuffer,uint32_t WriteAddr,u16_t NumByteToWrite);//写入flash
 void W25Q256_Erase_Chip(void);    	  	//整片擦除
 void W25Q256_Erase_Sector(uint32_t Dst_Addr);	//扇区擦除
 void W25Q256_Wait_Busy(void);           	//等待空闲
+bool W25Q256_WriteVolatile_Enable();
 
+bool W25Q256_XFER(uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize);
+bool W25Q256_Enable();
+bool W25Q256_Disable();
 #endif

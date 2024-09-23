@@ -13,6 +13,9 @@
 #include "stdbool.h"
 #include "cmdParser.h"
 
+
+#define TCP_DBGINFO_ENABLE (0)
+
 #define DEBUG_LWIP   1
 #define TCP_SERVER_PORT (51000)
 
@@ -76,12 +79,15 @@ static err_t tcp_server_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p,
 #if 1
         uint8_t *pCmd = p->payload;
         int pCmdSize = p->tot_len;
+
+#if TCP_DBGINFO_ENABLE
         printf("\ncmd rcv: \n");
 		for(int i = 0; i < pCmdSize; i++){
 		    printf("%02X ", pCmd[i]);
             if(i % 20 == 19) printf("\n");
         }
         printf("\n");
+#endif
 
         if((tcp_rcv_cmd_idx + pCmdSize) > tcp_rcv_cmd_maxSize){
             tcp_rcv_cmd_idx = 0;
@@ -91,8 +97,9 @@ static err_t tcp_server_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p,
             tcp_rcv_cmd_idx += pCmdSize;
             if(checkProtocol(tcp_rcv_cmd, tcp_rcv_cmd_idx)){
                 tcp_rcv_cmd_idx = 0;
+#if TCP_DBGINFO_ENABLE
                 printf("parser OK\n");
-
+#endif
                 //uint8_t tag = pCmd[1];
                 uint8_t *retData;
                 int retSize;

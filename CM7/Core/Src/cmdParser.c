@@ -106,17 +106,13 @@ bool tcpCmdParser(uint8_t *pCmd, int cmdSize, uint8_t **retData, int *retSize)
             break;
         case SXCMD_SPI_ENABLE:{
             printf("SPI_ENABLE\n"); 
-//            if(!W25Q256_SimpleInit()){
-//                tcpEncodeRspData(tag, CMD_ERR_FAIL, 0, 0, retData, retSize);
-//                break;
-//            }
-//            W25Q256_Write_Enable();
+            W25Q256_Enable();
             tcpEncodeRspData(tag, CMD_ERR_OK, 0, 0, retData, retSize);
         }
             break;
         case SXCMD_SPI_DISABLE:{
             printf("SPI_DISABLE\n");
-//            W25Q256_Write_Disable();
+            W25Q256_Disable();
             tcpEncodeRspData(tag, CMD_ERR_OK, 0, 0, retData, retSize);
         }
             break;
@@ -127,7 +123,7 @@ bool tcpCmdParser(uint8_t *pCmd, int cmdSize, uint8_t **retData, int *retSize)
             }sSpiXfer;
             memcpy(&sSpiXfer, data, sizeof(sSpiXfer));
             uint8_t *txData = &data[sizeof(sSpiXfer)];
-            printf("SPI_XFER=>txLen=%d, rxLen=%d\n", sSpiXfer.txLen, sSpiXfer.rxLen);
+            //printf("SPI_XFER=>txLen=%d, rxLen=%d\n", sSpiXfer.txLen, sSpiXfer.rxLen);
             
             if(W25Q256_XFER(txData, sSpiXfer.txLen, spiRcvData, sSpiXfer.rxLen)){                 
                 tcpEncodeRspData(tag, CMD_ERR_OK, spiRcvData, sSpiXfer.rxLen, retData, retSize);

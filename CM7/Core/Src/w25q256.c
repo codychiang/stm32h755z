@@ -19,6 +19,9 @@
 #define brPURPLEMsg(X) BrightPURPLE X MCOLOR_NONE
 #define mPlayerMsg(X)  BrightCYAN X MCOLOR_NONE
 
+#define W25Q256_DBGINFO_GENERALCMD_ENABLE (1)
+#define W25Q256_DBGINFO_CMD_ENABLE (1)
+
  
 uint8_t W25Q256_QPI_MODE=0;		//QSPI模式标志:0,SPI模式;1,QPI模式.
 uint8_t W25Q256_Addr32Bits_MODE=0;		//QSPI模式标志:0,SPI模式;1,QPI模式.
@@ -41,21 +44,15 @@ void showStatus()
 //初始化SPI FLASH的IO口
 bool W25Q256_Init(uint16_t preferKind)
 { 
-    uint8_t temp;    
     
     uint16_t W25Q256_TYPE = 0;	//默认是W25Q256
     uint32_t W25Q256_JEDECID = 0;	//默认是W25Q256
 
-    showStatus();
-    
-    if(!W25Q256_JedecID(&W25Q256_JEDECID)) return false;	//读取FLASH ID.
-    printf("JEDECID=0x%x\n", W25Q256_JEDECID);
-
-    //W25Q256_Qspi_Enable();			//使能QSPI模式
+//    W25Q256_Qspi_Enable();			//使能QSPI模式
     showStatus();
 
     if(!W25Q256_JedecID(&W25Q256_JEDECID)) return false;	//读取FLASH ID.
-    printf("JEDECID=0x%x\n", W25Q256_JEDECID);
+    printf("JEDECID=0x%x\n", (unsigned int)W25Q256_JEDECID);
 
 
     if(!W25Q256_ReadID(&W25Q256_TYPE)) return false;	//读取FLASH ID.
@@ -63,6 +60,7 @@ bool W25Q256_Init(uint16_t preferKind)
 	//printf("ID:%x\r\n",W25Q256_TYPE);
 	if(W25Q256_TYPE==preferKind)        //SPI FLASH为W25Q256
     {
+ 	      uint8_t temp;
 //        temp=W25Q256_ReadSR(3);      //读取状态寄存器3，判断地址模式
 //        if((temp&0X01)==0)			//如果不是4字节地址模式,则进入4字节地址模式
 //		{
@@ -75,14 +73,15 @@ bool W25Q256_Init(uint16_t preferKind)
 //            }
 //		}
 //		W25Q256_Write_Enable();		//写使能
-//    	if(W25Q256_QPI_MODE){		
-//    		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_4_LINES); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
-//        }
-//        else{
-//    		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_1_LINE); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
-//        }
-//		temp=3<<4;					//设置P4&P5=11,8个dummy clocks,104M
-//		QSPI_Transmit(&temp,1);		//发送1个字节
+
+    	if(W25Q256_QPI_MODE){		
+    		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_4_LINES); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
+        }
+        else{
+    		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_1_LINE); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
+        }
+		temp=3<<4;					//设置P4&P5=11,8个dummy clocks,104M
+		QSPI_Transmit(&temp,1);		//发送1个字节
 
         return true;
     }
@@ -95,12 +94,19 @@ void W25Q256_Qspi_Enable(void)
 	printf("%s\n", __func__);
 	uint8_t stareg2;
     stareg2=W25Q256_ReadSR(2);		//先读出状态寄存器2的原始值
-	if((stareg2&0X02)==0)			//QE位未使能
+	printf("%s=>1 stareg2=0x%x\n", __func__, stareg2);    
+	if((stareg2&0X02)==0x00)			//QE位未使能
 	{
-		W25Q256_Write_Enable();		//写使能 
-		stareg2 |= 2;				//使能QE位
+		//W25Q256_WriteVolatile_Enable();		//写使能 
+		W25Q256_Write_Enable();
+//		stareg2 &= 0x87;
+//		stareg2 |= 0x02;				//使能QE位
+		stareg2 = 0x02;
 		W25Q256_Write_SR(2,stareg2);	//写状态寄存器2
 	}
+    stareg2=W25Q256_ReadSR(2);		//先读出状态寄存器2的原始值
+	printf("%s=>2 stareg2=0x%x\n", __func__, stareg2);
+
 	QSPI_Send_CMD(W25X_EnterQPIMode,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_NONE);//写command指令,地址为0,无数据_8位地址_无地址_单线传输指令,无空周期,0个字节数据
 	W25Q256_QPI_MODE=1;				//标记QSPI模式
 }
@@ -131,32 +137,45 @@ void W25Q256_Qspi_Disable(void)
 //返回值:状态寄存器值
 uint8_t W25Q256_ReadSR(uint8_t regno)   
 {  
-	uint8_t byte=0,command=0; 
+	uint8_t byte=0,cmd=0; 
     switch(regno)
     {
         case 1:
-            command=W25X_ReadStatusReg1;    //读状态寄存器1指令
+            cmd=W25X_ReadStatusReg1;    //读状态寄存器1指令
             break;
         case 2:
-            command=W25X_ReadStatusReg2;    //读状态寄存器2指令
+            cmd=W25X_ReadStatusReg2;    //读状态寄存器2指令
             break;
         case 3:
-            command=W25X_ReadStatusReg3;    //读状态寄存器3指令
+            cmd=W25X_ReadStatusReg3;    //读状态寄存器3指令
             break;
         default:
-            command=W25X_ReadStatusReg1;    
+            cmd=W25X_ReadStatusReg1;    
             break;
     }   
+
+#if 1
+	if(W25Q256_QPI_MODE){
+        if(!W25Q256_GeneralCmd(cmd, QSPI_INSTRUCTION_4_LINES, QSPI_DATA_4_LINES, QSPI_ADDRESS_NONE, QSPI_ADDRESS_8_BITS,
+                                   0/*address*/, 0/*dummyCycles*/, 0/*txData*/, 0/*txSize*/, &byte/*rxData*/, 1/*rxSize*/)) return false;
+	}
+    else{
+        if(!W25Q256_GeneralCmd(cmd, QSPI_INSTRUCTION_1_LINE, QSPI_DATA_1_LINE, QSPI_ADDRESS_NONE, QSPI_ADDRESS_8_BITS,
+                                  0/*address*/, 0/*dummyCycles*/, 0/*txData*/, 0/*txSize*/, &byte/*rxData*/, 1/*rxSize*/)) return false;
+    }
+
+#else
 	if(W25Q256_QPI_MODE)
-		QSPI_Send_CMD(command,0,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_4_LINES);	//QPI,写command指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
+		QSPI_Send_CMD(cmd,0,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_4_LINES);	//QPI,写command指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
 	else
-		QSPI_Send_CMD(command,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_1_LINE);				//SPI,写command指令,地址为0,单线传数据_8位地址_无地址_单线传输指令,无空周期,1个字节数据
+		QSPI_Send_CMD(cmd,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_1_LINE);				//SPI,写command指令,地址为0,单线传数据_8位地址_无地址_单线传输指令,无空周期,1个字节数据
 	QSPI_Receive(&byte,1);	        
+#endif
 	return byte;   
 }   
 
 //写W25Q256状态寄存器
-void W25Q256_Write_SR(uint8_t regno,uint8_t sr)   
+bool W25Q256_Write_SR(uint8_t regno,uint8_t sr)   
 {   
     uint8_t command=0;
     switch(regno)
@@ -174,11 +193,27 @@ void W25Q256_Write_SR(uint8_t regno,uint8_t sr)
             command=W25X_WriteStatusReg1;    
             break;
     }   
+
+#if 1
+	if(W25Q256_QPI_MODE){
+        if(!W25Q256_GeneralCmd(command, QSPI_INSTRUCTION_4_LINES, QSPI_DATA_4_LINES, QSPI_ADDRESS_NONE, QSPI_ADDRESS_8_BITS,
+                                   0/*address*/, 0/*dummyCycles*/, &sr/*txData*/, 1/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
+	}
+    else{
+        if(!W25Q256_GeneralCmd(command, QSPI_INSTRUCTION_1_LINE, QSPI_DATA_1_LINE, QSPI_ADDRESS_NONE, QSPI_ADDRESS_8_BITS,
+                                  0/*address*/, 0/*dummyCycles*/, &sr/*txData*/, 1/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
+    }
+
+#else
 	if(W25Q256_QPI_MODE)
         QSPI_Send_CMD(command,0,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_4_LINES);    //QPI,写command指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
 	else 
         QSPI_Send_CMD(command,0,0, QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_1_LINE);             //SPI,写command指令,地址为0,单线传数据_8位地址_无地址_单线传输指令,无空周期,1个字节数据
 	QSPI_Transmit(&sr,1);	         	      
+
+#endif
+
+	return true;
 }  
 
 //W25Q256写使能	
@@ -200,11 +235,6 @@ void W25Q256_Write_Disable(void)
 	else 
         QSPI_Send_CMD(W25X_WriteDisable,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_NONE);              //SPI,写禁止指令,地址为0,无数据_8位地址_无地址_单线传输指令,无空周期,0个字节数据 
 } 
-
-bool W25Q256_XFER(uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize)
-{
-    return true;
-}    
 
 bool W25Q256_GeneralCmd(uint8_t cmd, uint32_t instructionMode, uint32_t dataMode, uint32_t addressMode, uint32_t addressSize, 
                         uint32_t address, uint8_t dummyCycles, uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize)
@@ -234,13 +264,14 @@ bool W25Q256_GeneralCmd(uint8_t cmd, uint32_t instructionMode, uint32_t dataMode
             return false;
         }
 
+#if W25Q256_DBGINFO_GENERALCMD_ENABLE
         printf("spi tx: ");
- 		 for(int i = 0; i < txSize; i++){
+		 for(int i = 0; i < txSize; i++){
 		    printf("%02X ", pTxData[i]);
             if(i % 30 == 29) printf("\n");
         }
         printf("\n");             
-
+#endif
     }
 
     if(rxSize > 0){
@@ -249,12 +280,14 @@ bool W25Q256_GeneralCmd(uint8_t cmd, uint32_t instructionMode, uint32_t dataMode
             return false;
         }
 
+#if W25Q256_DBGINFO_GENERALCMD_ENABLE
         printf("spi rx: ");
- 		 for(int i = 0; i < rxSize; i++){
+		 for(int i = 0; i < rxSize; i++){
 		    printf("%02X ", pRxData[i]);
             if(i % 30 == 29) printf("\n");
         }
         printf("\n");             
+#endif         
     }
 
     return true;
@@ -339,15 +372,94 @@ bool W25Q256_JedecID(uint32_t *pJedecDeviceId)
 //pBuffer:数据存储区
 //ReadAddr:开始读取的地址(最大32bit)
 //NumByteToRead:要读取的字节数(最大65535)
-void W25Q256_Read(uint8_t* pBuffer,uint32_t ReadAddr,uint16_t NumByteToRead)   
+#if 0
+
+bool W25Q256_Read(uint8_t* pBuffer,uint32_t ReadAddr,uint16_t NumByteToRead)   
 {
     if(W25Q256_QPI_MODE){
     	QSPI_Send_CMD(W25X_FastReadData,ReadAddr,8,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_4_LINES,W25Q256_Addr_MODE,QSPI_DATA_4_LINES);	//QPI,快速读数据,地址为ReadAddr,4线传输数据_32位地址_4线传输地址_4线传输指令,8空周期,NumByteToRead个数据
     }
     else{
-    	QSPI_Send_CMD(W25X_FastReadData,ReadAddr,8,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_1_LINE,W25Q256_Addr_MODE,QSPI_DATA_1_LINE);	//QPI,快速读数据,地址为ReadAddr,4线传输数据_32位地址_4线传输地址_4线传输指令,8空周期,NumByteToRead个数据
+    	QSPI_Send_CMD(W25X_FastReadData,ReadAddr,16,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_1_LINE,QSPI_ADDRESS_24_BITS,QSPI_DATA_1_LINE);	//QPI,快速读数据,地址为ReadAddr,4线传输数据_32位地址_4线传输地址_4线传输指令,8空周期,NumByteToRead个数据
     }
 	QSPI_Receive(pBuffer,NumByteToRead); 
+
+#if W25Q256_DBGINFO_GENERALCMD_ENABLE
+    printf("spi rx: ");
+	 for(int i = 0; i < NumByteToRead; i++){
+	    printf("%02X ", pBuffer[i]);
+        if(i % 30 == 29) printf("\n");
+    }
+    printf("\n");             
+#endif         
+
+
+    return true;
+}  
+
+#else
+
+bool W25Q256_Read(uint8_t* pBuffer,uint32_t ReadAddr,uint16_t NumByteToRead)   
+{
+    printf("%s\n", __func__);
+    if(W25Q256_QPI_MODE){
+        if(!W25Q256_GeneralCmd(W25X_FastReadData, QSPI_INSTRUCTION_4_LINES, QSPI_DATA_4_LINES, QSPI_ADDRESS_4_LINES, W25Q256_Addr_MODE,
+                                   ReadAddr/*address*/, 8/*dummyCycles*/, 0/*txData*/, 0/*txSize*/, pBuffer/*rxData*/, NumByteToRead/*rxSize*/)) return false;
+    }
+    else{
+        if(!W25Q256_GeneralCmd(W25X_FastReadData, QSPI_INSTRUCTION_1_LINE, QSPI_DATA_1_LINE, QSPI_ADDRESS_1_LINE, W25Q256_Addr_MODE,
+                                   ReadAddr/*address*/, 8/*dummyCycles*/, 0/*txData*/, 0/*txSize*/, pBuffer/*rxData*/, NumByteToRead/*rxSize*/)) return false;
+    }
+
+    return true;
+}
+
+#endif
+
+bool W25Q256_Quad_Read(uint8_t* pRxData,uint32_t ReadAddr,uint16_t rxSize)   
+{
+#if 1
+    QSPI_CommandTypeDef s_command;
+    s_command.Instruction       = W25X_QuadFastReadData;
+    s_command.Address           = ReadAddr;
+    s_command.DummyCycles       = 0;
+    s_command.InstructionMode   = QSPI_INSTRUCTION_4_LINES;
+    s_command.AddressMode       = QSPI_ADDRESS_4_LINES;
+    s_command.AddressSize       = QSPI_ADDRESS_32_BITS;
+    s_command.DataMode          = QSPI_DATA_4_LINES;
+    s_command.SIOOMode          = QSPI_SIOO_INST_EVERY_CMD;
+    s_command.AlternateByteMode = QSPI_ALTERNATE_BYTES_NONE;
+//    s_command.AlternateBytesSize = QSPI_ALTERNATE_BYTES_8_BITS;
+//    s_command.AlternateBytes = 0xF1;
+    s_command.DdrMode           = QSPI_DDR_MODE_DISABLE;
+    s_command.DdrHoldHalfCycle  = QSPI_DDR_HHC_ANALOG_DELAY;
+    s_command.NbData            = rxSize;
+
+    if(HAL_QSPI_Command(&hqspi, &s_command, HAL_QPSI_TIMEOUT_DEFAULT_VALUE) != HAL_OK) {
+        printf("command wrong ....\r\n");
+        return false;
+    }
+
+    if(rxSize > 0){
+        if(HAL_QSPI_Receive(&hqspi, pRxData, HAL_QPSI_TIMEOUT_DEFAULT_VALUE)!= HAL_OK) {
+            printf("rx wrong ....\r\n");
+            return false;
+        }
+
+#if W25Q256_DBGINFO_GENERALCMD_ENABLE
+        printf("spi rx: ");
+		 for(int i = 0; i < rxSize; i++){
+		    printf("%02X ", pRxData[i]);
+            if(i % 30 == 29) printf("\n");
+        }
+        printf("\n");             
+#endif         
+    }
+#else
+    if(!W25Q256_GeneralCmd(W25X_QuadFastReadData, QSPI_INSTRUCTION_4_LINES, QSPI_DATA_4_LINES, QSPI_ADDRESS_4_LINES, QSPI_ADDRESS_32_BITS,
+                               ReadAddr/*address*/, 0/*dummyCycles*/, 0/*txData*/, 0/*txSize*/, pBuffer/*rxData*/, NumByteToRead/*rxSize*/)) return false;
+#endif
+    return true;
 }  
 
 //SPI在一页(0~65535)内写入少于256个字节的数据
@@ -355,7 +467,9 @@ void W25Q256_Read(uint8_t* pBuffer,uint32_t ReadAddr,uint16_t NumByteToRead)
 //pBuffer:数据存储区
 //WriteAddr:开始写入的地址(最大32bit)
 //NumByteToWrite:要写入的字节数(最大256),该数不应该超过该页的剩余字节数!!!	 
-void W25Q256_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
+
+#if 0
+bool W25Q256_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
 {
 	W25Q256_Write_Enable();					//写使能
 
@@ -363,9 +477,98 @@ void W25Q256_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWr
     	QSPI_Send_CMD(W25X_PageProgram,WriteAddr,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_4_LINES,W25Q256_Addr_MODE,QSPI_DATA_4_LINES);	//QPI,页写指令,地址为WriteAddr,4线传输数据_32位地址_4线传输地址_4线传输指令,无空周期,NumByteToWrite个数据
   	else
     	QSPI_Send_CMD(W25X_PageProgram,WriteAddr,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_1_LINE,W25Q256_Addr_MODE,QSPI_DATA_1_LINE);	//QPI,页写指令,地址为WriteAddr,4线传输数据_32位地址_4线传输地址_4线传输指令,无空周期,NumByteToWrite个数据
-        
-	QSPI_Transmit(pBuffer,NumByteToWrite);	         	      
+
+    
+	QSPI_Transmit(pBuffer,NumByteToWrite);	   
+
+#if W25Q256_DBGINFO_GENERALCMD_ENABLE
+    printf("spi tx: ");
+	 for(int i = 0; i < NumByteToWrite; i++){
+	    printf("%02X ", pBuffer[i]);
+        if(i % 30 == 29) printf("\n");
+    }
+    printf("\n");             
+#endif         
+    
 	W25Q256_Wait_Busy();					   //等待写入结束
+
+    return true;
+} 
+
+bool W25Q256_Write_PageBase(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
+{
+	if(W25Q256_QPI_MODE)
+    	QSPI_Send_CMD(W25X_PageProgram,WriteAddr,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_4_LINES,W25Q256_Addr_MODE,QSPI_DATA_4_LINES);	//QPI,页写指令,地址为WriteAddr,4线传输数据_32位地址_4线传输地址_4线传输指令,无空周期,NumByteToWrite个数据
+  	else
+    	QSPI_Send_CMD(W25X_PageProgram,WriteAddr,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_1_LINE,W25Q256_Addr_MODE,QSPI_DATA_1_LINE);	//QPI,页写指令,地址为WriteAddr,4线传输数据_32位地址_4线传输地址_4线传输指令,无空周期,NumByteToWrite个数据
+        
+	QSPI_Transmit(pBuffer,NumByteToWrite);	   
+#if W25Q256_DBGINFO_GENERALCMD_ENABLE
+    printf("spi tx: ");
+	 for(int i = 0; i < NumByteToWrite; i++){
+	    printf("%02X ", pBuffer[i]);
+        if(i % 30 == 29) printf("\n");
+    }
+    printf("\n");             
+#endif         
+    
+    return true;
+} 
+
+#else
+bool W25Q256_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
+{
+    printf("%s\n", __func__);
+	W25Q256_Write_Enable();					//写使能
+
+	if(W25Q256_QPI_MODE){
+        if(!W25Q256_GeneralCmd(W25X_PageProgram, QSPI_INSTRUCTION_4_LINES, QSPI_DATA_4_LINES, QSPI_ADDRESS_4_LINES, W25Q256_Addr_MODE,
+                                   WriteAddr/*address*/, 0/*dummyCycles*/, pBuffer/*txData*/, NumByteToWrite/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
+    }
+  	else{
+        if(!W25Q256_GeneralCmd(W25X_PageProgram, QSPI_INSTRUCTION_1_LINE, QSPI_DATA_1_LINE, QSPI_ADDRESS_1_LINE, W25Q256_Addr_MODE,
+                                   WriteAddr/*address*/, 0/*dummyCycles*/, pBuffer/*txData*/, NumByteToWrite/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
+    }
+        
+	W25Q256_Wait_Busy();					   //等待写入结束
+
+    return true;
+} 
+
+bool W25Q256_Write_PageBase(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
+{
+    printf("%s\n", __func__);
+
+	if(W25Q256_QPI_MODE){
+        if(!W25Q256_GeneralCmd(W25X_PageProgram, QSPI_INSTRUCTION_4_LINES, QSPI_DATA_4_LINES, QSPI_ADDRESS_4_LINES, W25Q256_Addr_MODE,
+                                   WriteAddr/*address*/, 0/*dummyCycles*/, pBuffer/*txData*/, NumByteToWrite/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
+    }
+  	else{
+        if(!W25Q256_GeneralCmd(W25X_PageProgram, QSPI_INSTRUCTION_1_LINE, QSPI_DATA_1_LINE, QSPI_ADDRESS_1_LINE, W25Q256_Addr_MODE,
+                                   WriteAddr/*address*/, 0/*dummyCycles*/, pBuffer/*txData*/, NumByteToWrite/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
+    }
+    return true;
+} 
+#endif
+
+bool W25Q256_Quad_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
+{
+	W25Q256_Write_Enable();					//写使能
+
+    if(!W25Q256_GeneralCmd(W25X_QuadPageProgram, QSPI_INSTRUCTION_4_LINES, QSPI_DATA_4_LINES, QSPI_ADDRESS_4_LINES, W25Q256_Addr_MODE,
+                               WriteAddr/*address*/, 0/*dummyCycles*/, pBuffer/*txData*/, NumByteToWrite/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
+        
+	W25Q256_Wait_Busy();					   //等待写入结束
+
+    return true;
+} 
+
+bool W25Q256_Quad_Write_PageBase(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
+{
+    if(!W25Q256_GeneralCmd(W25X_QuadPageProgram, QSPI_INSTRUCTION_4_LINES, QSPI_DATA_4_LINES, QSPI_ADDRESS_4_LINES, W25Q256_Addr_MODE,
+                               WriteAddr/*address*/, 0/*dummyCycles*/, pBuffer/*txData*/, NumByteToWrite/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
+        
+    return true;
 } 
 
 //无检验写SPI FLASH 
@@ -376,14 +579,14 @@ void W25Q256_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWr
 //WriteAddr:开始写入的地址(最大32bit)
 //NumByteToWrite:要写入的字节数(最大65535)
 //CHECK OK
-void W25Q256_Write_NoCheck(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)   
+bool W25Q256_Write_NoCheck(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)   
 { 			 		 
 	uint16_t pageremain;	   
 	pageremain=256-WriteAddr%256; //单页剩余的字节数		 	    
 	if(NumByteToWrite<=pageremain)pageremain=NumByteToWrite;//不大于256个字节
 	while(1)
 	{	   
-		W25Q256_Write_Page(pBuffer,WriteAddr,pageremain);
+		if(!W25Q256_Write_Page(pBuffer,WriteAddr,pageremain)) return false;
 		if(NumByteToWrite==pageremain)break;//写入结束了
 	 	else //NumByteToWrite>pageremain
 		{
@@ -395,6 +598,8 @@ void W25Q256_Write_NoCheck(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteT
 			else pageremain=NumByteToWrite; 	  //不够256个字节了
 		}
 	}   
+
+    return true;
 } 
 
 //写SPI FLASH  
@@ -404,7 +609,7 @@ void W25Q256_Write_NoCheck(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteT
 //WriteAddr:开始写入的地址(最大32bit)						
 //NumByteToWrite:要写入的字节数(最大65535)   
 uint8_t W25Q256_BUFFER[4096];		 
-void W25Q256_Write(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)   
+bool W25Q256_Write(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)   
 { 
 	uint32_t secpos;
 	uint16_t secoff;
@@ -419,7 +624,7 @@ void W25Q256_Write(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
  	if(NumByteToWrite<=secremain)secremain=NumByteToWrite;//不大于4096个字节
 	while(1) 
 	{	
-		W25Q256_Read(W25Q256_BUF,secpos*4096,4096);//读出整个扇区的内容
+		if(W25Q256_Read(W25Q256_BUF,secpos*4096,4096)) return false;//读出整个扇区的内容
 		for(i=0;i<secremain;i++)//校验数据
 		{
 			if(W25Q256_BUF[secoff+i]!=0XFF)break;//需要擦除  	  
@@ -446,7 +651,9 @@ void W25Q256_Write(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
 			if(NumByteToWrite>4096)secremain=4096;	//下一个扇区还是写不完
 			else secremain=NumByteToWrite;			//下一个扇区可以写完了
 		}	 
-	};	 
+	};
+
+	return true;
 }
 
 //擦除整个芯片		  
@@ -463,6 +670,24 @@ void W25Q256_Erase_Chip(void)
     }
     W25Q256_Wait_Busy();						//等待芯片擦除结束
 } 
+
+bool W25Q256_32KB_Block_Erase(uint32_t addr)   
+{  	 
+#if W25Q256_DBGINFO_CMD_ENABLE
+    printf(infoMsg("%s\n"), __func__);
+#endif
+
+	if(W25Q256_QPI_MODE){
+        if(!W25Q256_GeneralCmd(W25X_32KB_BlockErase, QSPI_INSTRUCTION_4_LINES, QSPI_DATA_NONE, QSPI_ADDRESS_4_LINES, W25Q256_Addr_MODE,
+                                   addr/*address*/, 0/*dummyCycles*/, 0/*txData*/, 0/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
+    }
+  	else{
+        if(!W25Q256_GeneralCmd(W25X_32KB_BlockErase, QSPI_INSTRUCTION_1_LINE, QSPI_DATA_NONE, QSPI_ADDRESS_1_LINE, W25Q256_Addr_MODE,
+                                   addr/*address*/, 0/*dummyCycles*/, 0/*txData*/, 0/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
+    }
+
+    return true;
+}
 
 //擦除一个扇区
 //Dst_Addr:扇区地址 根据实际容量设置
@@ -489,9 +714,138 @@ void W25Q256_Wait_Busy(void)
 	while((W25Q256_ReadSR(1)&0x01)==0x01);   // 等待BUSY位清空
 }   
 
+bool W25Q256_WriteVolatile_Enable()
+{
+
+	if(W25Q256_QPI_MODE){
+        if(!W25Q256_GeneralCmd(W25X_WriteVolatileStatusRegister, QSPI_INSTRUCTION_4_LINES, QSPI_DATA_NONE, QSPI_ADDRESS_NONE, W25Q256_Addr_MODE,
+                                   0/*address*/, 0/*dummyCycles*/, 0/*txData*/, 0/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
+	}
+    else{
+        if(!W25Q256_GeneralCmd(W25X_WriteVolatileStatusRegister, QSPI_INSTRUCTION_1_LINE, QSPI_DATA_NONE, QSPI_ADDRESS_NONE, W25Q256_Addr_MODE,
+                                  0/*address*/, 0/*dummyCycles*/, 0/*txData*/, 0/*txSize*/, 0/*rxData*/, 0/*rxSize*/)) return false;
+    }
+    return true;   
+}
+
+bool W25Q256_XFER(uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize)
+{
+//    HAL_StatusTypeDef rltStatus;
+    uint8_t cmd = pTxData[0];
+    uint8_t *txParaPtr = &pTxData[1];
+    int txParaLen = txSize - 1;
+
+#if W25Q256_DBGINFO_CMD_ENABLE
+    printf(infoMsg("command:0x%x\r\n"), cmd);
+#endif
+
+#if 1
+    if(cmd == 0x0b){//fast read
+        uint32_t address = (txParaPtr[0] << 16) + (txParaPtr[1] << 8) + (txParaPtr[2] << 0); 
+#if W25Q256_DBGINFO_CMD_ENABLE
+        printf("addr=0x%x\n", (unsigned int)address);
+#endif
+        return W25Q256_Read(pRxData, address, rxSize);
+    }
+    else if(cmd == 0xeb){//fast read
+        uint32_t address = (txParaPtr[0] << 24) + (txParaPtr[1] << 16) + (txParaPtr[2] << 8) + 0;
+#if W25Q256_DBGINFO_CMD_ENABLE
+        printf("addr=0x%x\n", (unsigned int)address);
+#endif
+        return W25Q256_Quad_Read(pRxData, address, rxSize);
+    }
+    else if(cmd == 0x52){//32KB Block Erase
+        uint32_t address = (txParaPtr[0] << 16) + (txParaPtr[1] << 8) + (txParaPtr[2] << 0); 
+#if W25Q256_DBGINFO_CMD_ENABLE
+        printf("addr=0x%x\n", (unsigned int)address);
+#endif
+        return W25Q256_32KB_Block_Erase(address);
+    }
+    else if(cmd == 0x02){//page program
+        int addrSize = 3;
+        uint32_t address = (txParaPtr[0] << 16) + (txParaPtr[1] << 8) + (txParaPtr[2] << 0); 
+        uint32_t dataLen = txParaLen - addrSize/*address*/;
+        uint8_t *dataPtr = txParaPtr + addrSize;
+#if W25Q256_DBGINFO_CMD_ENABLE
+        printf("addr=0x%x, dataLen=%d\n", (unsigned int)address, (int)dataLen);
+#endif    
+        return W25Q256_Write_PageBase(dataPtr, (unsigned int)address, (int)dataLen);
+    }
+    else if(cmd == 0x32){//quad input page program
+        int addrSize = 4;
+        uint32_t address = (txParaPtr[0] << 16) + (txParaPtr[1] << 8) + (txParaPtr[2] << 0); 
+        uint32_t dataLen = txParaLen - addrSize/*address*/;
+        uint8_t *dataPtr = txParaPtr + addrSize;
+#if W25Q256_DBGINFO_CMD_ENABLE
+        printf("addr=0x%x, dataLen=%d\n", (unsigned int)address, (int)dataLen);
+#endif    
+        return W25Q256_Quad_Write_PageBase(dataPtr, (unsigned int)address, (int)dataLen);
+    }
+    else{
+    	if(W25Q256_QPI_MODE){
+            if(!W25Q256_GeneralCmd(cmd, QSPI_INSTRUCTION_4_LINES, ((txParaLen == 0 && rxSize == 0)? QSPI_DATA_NONE: QSPI_DATA_4_LINES), QSPI_ADDRESS_NONE, QSPI_ADDRESS_8_BITS,
+                                       0/*address*/, 0/*dummyCycles*/, txParaPtr/*txData*/, txParaLen/*txSize*/, pRxData/*rxData*/, rxSize/*rxSize*/)) return false;
+    	}
+        else{
+            if(!W25Q256_GeneralCmd(cmd, QSPI_INSTRUCTION_1_LINE, ((txParaLen == 0 && rxSize == 0)? QSPI_DATA_NONE: QSPI_DATA_1_LINE), QSPI_ADDRESS_NONE, QSPI_ADDRESS_8_BITS,
+                                      0/*address*/, 0/*dummyCycles*/, txParaPtr/*txData*/, txParaLen/*txSize*/, pRxData/*rxData*/, rxSize/*rxSize*/)) return false;
+        }
+    }
+#else
+	if(W25Q256_QPI_MODE)
+        rltStatus = QSPI_Send_CMD(cmd,0,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_4_LINES,QSPI_ADDRESS_8_BITS,QSPI_DATA_4_LINES);//QPI,读id,地址为0,4线传输数据_24位地址_4线传输地址_4线传输指令,无空周期,2个字节数据
+	else 
+        rltStatus = QSPI_Send_CMD(cmd,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_1_LINE,QSPI_ADDRESS_8_BITS,QSPI_DATA_1_LINE);         //SPI,读id,地址为0,单线传输数据_24位地址_单线传输地址_单线传输指令,无空周期,2个字节数据
+
+    if(HAL_OK != rltStatus) return false;
+    if(txParaLen > 0){
+        if(HAL_OK != QSPI_Transmit(txParaPtr, txParaLen)) return false;
+    }
+    if(rxSize > 0){
+        if(HAL_OK != QSPI_Receive(pRxData, rxSize)) return false;
+
+        printf("spi rcv: ");
+		for(int i = 0; i < rxSize; i++){
+		    printf("%02X ", pRxData[i]);
+            if(i % 20 == 19) printf("\n");
+        }
+        printf("\n");    
+    }    
+
+    if(cmd == W25X_JedecDeviceID){
+        uint16_t W25Q256_TYPE = 0;
+        if(!W25Q256_ReadID(&W25Q256_TYPE)) return false;	//读取FLASH ID.
+    	printf("TYPE:0x%X\r\n", W25Q256_TYPE);
+    }
+#endif
+
+    return true;
+}    
+
+bool W25Q256_Enable()
+{
+    HAL_GPIO_WritePin(SpiFlashEnable_GPIO_Port, SpiFlashEnable_Pin, GPIO_PIN_SET);
+    W25Q256_Qspi_Enable();    
+
+    uint8_t temp = 0;
+	if(W25Q256_QPI_MODE){		
+		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_4_LINES,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_4_LINES); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
+    }
+    else{
+		QSPI_Send_CMD(W25X_SetReadParam,0,0,QSPI_INSTRUCTION_1_LINE,QSPI_ADDRESS_NONE,QSPI_ADDRESS_8_BITS,QSPI_DATA_1_LINE); 		//QPI,设置读参数指令,地址为0,4线传数据_8位地址_无地址_4线传输指令,无空周期,1个字节数据
+    }
+	temp=3<<4;					//设置P4&P5=11,8个dummy clocks,104M
+	QSPI_Transmit(&temp,1);		//发送1个字节
 
 
+    return true;
+}
 
-
+bool W25Q256_Disable()
+{
+    HAL_GPIO_WritePin(SpiFlashEnable_GPIO_Port, SpiFlashEnable_Pin, GPIO_PIN_RESET);
+    W25Q256_Qspi_Disable();    
+    return true;
+}
 
 

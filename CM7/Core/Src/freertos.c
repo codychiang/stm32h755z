@@ -249,6 +249,7 @@ void StartInFlashTask(void const * argument)
   /* USER CODE BEGIN StartInFlashTask */
   int debounce = 0;
   int key = 0;
+  uint8_t inc = 1;
   /* Infinite loop */
   for(;;)
   {
@@ -348,29 +349,39 @@ void StartInFlashTask(void const * argument)
         bool initOK = W25Q256_Init(W25Q256);
         if(initOK){
             printf("detected flash\n");
+            uint32_t size = W25_onePage;
             uint32_t addr = 0;
-            uint8_t *pData = malloc(W25_oneSector);
-            uint8_t *pErasedData = malloc(W25_oneSector);
+            uint8_t *pData = malloc(size);
+            uint8_t *pErasedData = malloc(size);
             if(pData){
                 
-                W25Q256_Read(pData, addr, W25_oneSector);
+                W25Q256_Read(pData, addr, size);
                 W25Q256_Erase_Sector(addr / W25_oneSector);
-                W25Q256_Read(pErasedData, addr, W25_oneSector);
+                W25Q256_Read(pErasedData, addr, size);
 
-                for(int i = 0; i < 256; i++) pData[i] = i;
-                W25Q256_Write_NoCheck(pData, addr, W25_oneSector);
-                W25Q256_Read(pErasedData, addr, W25_oneSector);
-                if(0 == memcmp(pErasedData, pData, W25_oneSector)){
-                    printf("Write success\n");
+                for(int i = 0; i < size; i++) pData[i] = (uint8_t)(i);
+                pData[0] = 0x55 + inc;
+                pData[size - 1] = 0x22;
+                
+                W25Q256_Write_NoCheck(pData, addr, size);
+                W25Q256_Read(pErasedData, addr, size);
+                if(0 == memcmp(pErasedData, pData, size)){
+                    printf("Write/Verify success\n");
+                }
+                else{
+                    printf("Write/Verify fail\n");
                 }
                 
                 free(pData);
                 free(pErasedData);
+                inc++;
             }
         }
         else{
             printf("no flash\n");
         }
+        HAL_GPIO_WritePin(SpiFlashEnable_GPIO_Port, SpiFlashEnable_Pin, GPIO_PIN_RESET);
+        
 #endif
 
 	}

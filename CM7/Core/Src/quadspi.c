@@ -1,4 +1,4 @@
-/* USER CODE BEGIN Header */
+﻿/* USER CODE BEGIN Header */
 /**
   ******************************************************************************
   * @file    quadspi.c
@@ -36,6 +36,11 @@ void MX_QUADSPI_Init(void)
 
   /* USER CODE BEGIN QUADSPI_Init 1 */
 
+  /*
+  hqspi.Init.ClockPrescaler = 9; // 100M / (ClockPrescaler + 1) = 10M
+  hqspi.Init.ClockPrescaler = 1; // 100M / (ClockPrescaler + 1) = 50M
+  */
+  
   /* USER CODE END QUADSPI_Init 1 */
   hqspi.Instance = QUADSPI;
   hqspi.Init.ClockPrescaler = 9;
