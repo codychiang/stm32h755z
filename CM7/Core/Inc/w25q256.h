@@ -84,4 +84,5 @@ bool W25Q256_WriteVolatile_Enable();
 bool W25Q256_XFER(uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize);
 bool W25Q256_Enable();
 bool W25Q256_Disable();
+void W25Q256_QspiDriver_SetPara(uint32_t speed, uint32_t clockMode);
 #endif

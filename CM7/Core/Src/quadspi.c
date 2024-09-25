@@ -37,17 +37,17 @@ void MX_QUADSPI_Init(void)
   /* USER CODE BEGIN QUADSPI_Init 1 */
 
   /*
-  hqspi.Init.ClockPrescaler = 9; // 100M / (ClockPrescaler + 1) = 10M
-  hqspi.Init.ClockPrescaler = 1; // 100M / (ClockPrescaler + 1) = 50M
+  hqspi.Init.ClockPrescaler = 9; // 160M / (ClockPrescaler + 1) = 40M
+  hqspi.Init.ClockPrescaler = 1; // 160M / (ClockPrescaler + 1) = 40M
   */
   
   /* USER CODE END QUADSPI_Init 1 */
   hqspi.Instance = QUADSPI;
-  hqspi.Init.ClockPrescaler = 1;
-  hqspi.Init.FifoThreshold = 24;
+  hqspi.Init.ClockPrescaler = 3;
+  hqspi.Init.FifoThreshold = 32;
   hqspi.Init.SampleShifting = QSPI_SAMPLE_SHIFTING_HALFCYCLE;
   hqspi.Init.FlashSize = 24;
-  hqspi.Init.ChipSelectHighTime = QSPI_CS_HIGH_TIME_6_CYCLE;
+  hqspi.Init.ChipSelectHighTime = QSPI_CS_HIGH_TIME_2_CYCLE;
   hqspi.Init.ClockMode = QSPI_CLOCK_MODE_0;
   hqspi.Init.FlashID = QSPI_FLASH_ID_1;
   hqspi.Init.DualFlash = QSPI_DUALFLASH_DISABLE;
@@ -219,4 +219,21 @@ HAL_StatusTypeDef QSPI_Transmit(uint8_t* buf,uint32_t datalen)
     hqspi.Instance->DLR=datalen-1;                            //??ï¿½ç½®?ï¿½ï¿½?ï¿½ï¿½?ï¿½ï¿½ï¿??
     return HAL_QSPI_Transmit(&hqspi,buf,5000);
 }
+
+void setQspiPara(uint32_t ClockPrescaler, uint32_t ClockMode)
+{
+    QSPI_HandleTypeDef *phqspi = &hqspi;
+
+    __HAL_QSPI_ENABLE(phqspi);
+
+    /* Configure QSPI Clock Prescaler and Sample Shift */
+    MODIFY_REG(phqspi->Instance->CR, QUADSPI_CR_PRESCALER, (phqspi->Init.ClockPrescaler << QUADSPI_CR_PRESCALER_Pos));
+
+    /* Configure QSPI Flash Size, CS High Time and Clock Mode */
+    MODIFY_REG(phqspi->Instance->DCR, QUADSPI_DCR_CKMODE, phqspi->Init.ClockMode);
+
+    /* Enable the QSPI peripheral */
+    __HAL_QSPI_ENABLE(phqspi);
+}
+
 /* USER CODE END 1 */

@@ -14,6 +14,7 @@ struct tcp_server {
 	void (*error)(void *arg, err_t err);
 };
 
-extern void tcp_server_init(void);
+void tcp_server_init(void);
+void processCmd();
 
 #endif

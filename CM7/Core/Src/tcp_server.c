@@ -13,6 +13,8 @@
 #include "stdbool.h"
 #include "cmdParser.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
 
 #define TCP_DBGINFO_ENABLE (0)
 
@@ -65,6 +67,15 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *new_pcb, err_t err)
 	return ERR_OK;
 }
 
+
+
+
+bool gotValidCmd = false;
+struct tcp_pcb *gtpcb = 0;
+
+extern SemaphoreHandle_t xLock;
+
+
 #define tcp_rcv_cmd_maxSize (4096 + 100)
 uint8_t tcp_rcv_cmd[tcp_rcv_cmd_maxSize];
 int tcp_rcv_cmd_idx = 0;
@@ -91,22 +102,42 @@ static err_t tcp_server_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p,
 
         if((tcp_rcv_cmd_idx + pCmdSize) > tcp_rcv_cmd_maxSize){
             tcp_rcv_cmd_idx = 0;
+     		tcp_recved(tpcb, pCmdSize);
+     		pbuf_free(p);
         }
         else{
     		memcpy(&tcp_rcv_cmd[tcp_rcv_cmd_idx], pCmd, pCmdSize);
             tcp_rcv_cmd_idx += pCmdSize;
+        
+     		tcp_recved(tpcb, pCmdSize);
+     		pbuf_free(p);
+        
             if(checkProtocol(tcp_rcv_cmd, tcp_rcv_cmd_idx)){
                 tcp_rcv_cmd_idx = 0;
 #if TCP_DBGINFO_ENABLE
                 printf("parser OK\n");
 #endif
-                //uint8_t tag = pCmd[1];
+
+#if 1
                 uint8_t *retData;
                 int retSize;
                 tcpCmdParser(tcp_rcv_cmd, tcp_rcv_cmd_idx, &retData, &retSize);
+                
+                //NVIC_DisableIRQ(ETH_IRQn);
                 if(ERR_OK != tcp_write(tpcb, retData, retSize, 1)){
                     printf("tcp write fail, tcp_sndbuf=%d\n", tcp_sndbuf(tpcb));
                 }
+                else{
+                    if(ERR_OK != tcp_output(tpcb)){
+                        printf("tcp output fail\n");
+                    }
+                }
+#else
+                xSemaphoreTake(xLock, HAL_MAX_DELAY); 
+                gotValidCmd = true;
+                gtpcb = tpcb;
+                xSemaphoreGive(xLock);
+#endif                
             }
         }
 
@@ -129,8 +160,7 @@ static err_t tcp_server_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p,
 		tcp_write(tpcb, tcpRsp, strlen((char*)tcpRsp), 1);
 		tcp_write(tpcb, tcp_rcv_cmd, p->tot_len, 1);
 #endif
-		tcp_recved(tpcb, p->tot_len);
-		pbuf_free(p);
+
 	}
 	else if(err == ERR_OK) {
 		printf("tcp client closed\r\n");
@@ -149,3 +179,37 @@ static void tcp_server_error(void *arg, err_t err)
 
 
 }
+
+void processCmd()
+{
+
+    bool got;
+    struct tcp_pcb *tpcb;
+
+    xSemaphoreTake(xLock, HAL_MAX_DELAY); 
+    got = gotValidCmd;
+    if(gotValidCmd) gotValidCmd = false;
+    tpcb = gtpcb;
+    xSemaphoreGive(xLock);
+
+    if(got){
+        //uint8_t tag = pCmd[1];
+        uint8_t *retData;
+        int retSize;
+        tcpCmdParser(tcp_rcv_cmd, tcp_rcv_cmd_idx, &retData, &retSize);
+        
+        //NVIC_DisableIRQ(ETH_IRQn);
+        if(ERR_OK != tcp_write(tpcb, retData, retSize, 1)){
+            printf("tcp write fail, tcp_sndbuf=%d\n", tcp_sndbuf(tpcb));
+        }
+        else{
+            if(ERR_OK != tcp_output(tpcb)){
+                printf("tcp output fail\n");
+            }
+        }
+        //NVIC_EnableIRQ(ETH_IRQn);
+    }
+
+
+}
+

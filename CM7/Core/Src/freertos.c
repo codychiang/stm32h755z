@@ -19,6 +19,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "FreeRTOS.h"
+#include "semphr.h"
 #include "task.h"
 #include "main.h"
 #include "cmsis_os.h"
@@ -167,6 +168,12 @@ void StartDefaultTask(void const * argument)
   ip_addr_t PC_IPADDR;
   IP_ADDR4(&PC_IPADDR, 192, 168, 7, 2);
 
+#if 1
+  for (;;) {
+    osDelay(1000000);
+  }
+
+#else
   struct udp_pcb* my_udp = udp_new();
   udp_connect(my_udp, &PC_IPADDR, 55151);
   struct pbuf* udp_buffer = NULL;
@@ -183,6 +190,7 @@ void StartDefaultTask(void const * argument)
       pbuf_free(udp_buffer);
     }
   }
+#endif  
   /* USER CODE END StartDefaultTask */
 }
 
@@ -218,9 +226,13 @@ void StartLedTask(void const * argument)
 * @retval None
 */
 /* USER CODE END Header_StartTcpTask */
+extern void processCmd();
+SemaphoreHandle_t xLock;
+
 void StartTcpTask(void const * argument)
 {
   /* USER CODE BEGIN StartTcpTask */
+  xLock = xSemaphoreCreateMutex();
   osSemaphoreWait(myBinarySem_lwipInitHandle, osWaitForever);
   printf("tcp_server_init\r\n");
   tcp_server_init();
@@ -230,9 +242,11 @@ void StartTcpTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
-    test1++;
-    if(test1 > 100) test1 = 0;
+    osDelay(1000000);
+    //processCmd();
+    
+//    test1++;
+//    if(test1 > 100) test1 = 0;
   }
   /* USER CODE END StartTcpTask */
 }

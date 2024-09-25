@@ -44,6 +44,8 @@ void MX_QUADSPI_Init(void);
 HAL_StatusTypeDef QSPI_Send_CMD(uint32_t instruction,uint32_t address,uint32_t dummyCycles,uint32_t instructionMode,uint32_t addressMode,uint32_t addressSize,uint32_t dataMode);
 HAL_StatusTypeDef QSPI_Transmit(uint8_t* buf,uint32_t datalen);
 HAL_StatusTypeDef QSPI_Receive(uint8_t* buf,uint32_t datalen);
+void setQspiPara(uint32_t ClockPrescaler, uint32_t ClockMode);
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

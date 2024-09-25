@@ -21,6 +21,7 @@
 
 #define W25Q256_DBGINFO_GENERALCMD_ENABLE (0)
 #define W25Q256_DBGINFO_CMD_ENABLE (0)
+#define PseudoFlash  (1) 
 
  
 uint8_t W25Q256_QPI_MODE=0;		//QSPI模式标志:0,SPI模式;1,QPI模式.
@@ -800,7 +801,12 @@ bool W25Q256_XFER(uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize)
 #if W25Q256_DBGINFO_CMD_ENABLE
         printf("addr=0x%x\n", (unsigned int)address);
 #endif
+
+#if PseudoFlash
+        return true;
+#else
         return W25Q256_Read(pRxData, address, rxSize);
+#endif
     }
     else if(cmd == 0xeb){//fast read
         uint32_t address = (txParaPtr[0] << 24) + (txParaPtr[1] << 16) + (txParaPtr[2] << 8) + 0;
@@ -836,6 +842,15 @@ bool W25Q256_XFER(uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize)
 #endif    
         return W25Q256_Quad_Write_PageBase(dataPtr, (unsigned int)address, (int)dataLen);
     }
+#if PseudoFlash
+    else if(cmd == 0x9F){
+        pRxData[0] = 0xEF;
+        pRxData[1] = 0x40;
+        pRxData[2] = 0x19;
+        pRxData[3] = 0x0;
+        return true;
+    }
+#endif    
     else{
     	if(W25Q256_QPI_MODE){
             if(!W25Q256_GeneralCmd(cmd, QSPI_INSTRUCTION_4_LINES, ((txParaLen == 0 && rxSize == 0)? QSPI_DATA_NONE: QSPI_DATA_4_LINES), QSPI_ADDRESS_NONE, QSPI_ADDRESS_8_BITS,
@@ -903,4 +918,14 @@ bool W25Q256_Disable()
     return true;
 }
 
+void W25Q256_QspiDriver_SetPara(uint32_t speed, uint32_t clockMode)
+{
+    /*
+        speed = 160,000,000 / (ClockPrescaler + 1);
+    */
+    uint32_t spiClock = 160000000;
+    uint32_t clockPrescaler = ((spiClock + (speed - 1)) / speed) - 1;
+    printf("prefer speed=%u => physical speed=%u, clockPrescaler=%u, clockMode=%u\n", (unsigned int)speed, (unsigned int)(spiClock / (clockPrescaler + 1) ), (unsigned int)clockPrescaler, (unsigned int)clockMode);
+    setQspiPara(clockPrescaler, clockMode);
+}
 
