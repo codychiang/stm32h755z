@@ -20,8 +20,10 @@
 #define mPlayerMsg(X)  BrightCYAN X MCOLOR_NONE
 
 #define W25Q256_DBGINFO_GENERALCMD_ENABLE (0)
+#define W25Q256_DBGINFO_READ_ENABLE (0)
+#define W25Q256_DBGINFO_WRITE_ENABLE (0)
 #define W25Q256_DBGINFO_CMD_ENABLE (0)
-#define PseudoFlash  (1) 
+#define PseudoFlash  (0) 
 
  
 uint8_t W25Q256_QPI_MODE=0;		//QSPI模式标志:0,SPI模式;1,QPI模式.
@@ -258,6 +260,8 @@ bool W25Q256_setReadParam()
 	QSPI_Transmit(&readParam,1);		//发送1个字节
 #endif
 
+    W25Q256_Wait_Busy();
+
     return true;
 }
 
@@ -313,14 +317,26 @@ bool W25Q256_GeneralCmd(uint8_t cmd, uint32_t instructionMode, uint32_t dataMode
             return false;
         }
 
-#if W25Q256_DBGINFO_GENERALCMD_ENABLE
-        printf("spi tx: ");
-		 for(int i = 0; i < txSize; i++){
-		    printf("%02X ", pTxData[i]);
-            if(i % 30 == 29) printf("\n");
-        }
-        printf("\n");             
+        if(cmd == W25X_PageProgram){
+#if W25Q256_DBGINFO_WRITE_ENABLE
+            printf("spi tx: ");
+    		 for(int i = 0; i < txSize; i++){
+    		    printf("%02X ", pTxData[i]);
+                if(i % 32 == 21) printf("\n");
+            }
+            printf("\n");      
 #endif
+        }
+        else{
+#if W25Q256_DBGINFO_GENERALCMD_ENABLE
+            printf("spi tx: ");
+    		 for(int i = 0; i < txSize; i++){
+    		    printf("%02X ", pTxData[i]);
+                if(i % 32 == 21) printf("\n");
+            }
+            printf("\n");
+#endif
+        }
     }
 
     if(rxSize > 0){
@@ -329,14 +345,27 @@ bool W25Q256_GeneralCmd(uint8_t cmd, uint32_t instructionMode, uint32_t dataMode
             return false;
         }
 
-#if W25Q256_DBGINFO_GENERALCMD_ENABLE
-        printf("spi rx: ");
-		 for(int i = 0; i < rxSize; i++){
-		    printf("%02X ", pRxData[i]);
-            if(i % 30 == 29) printf("\n");
+
+        if(cmd == W25X_FastReadData){
+#if W25Q256_DBGINFO_READ_ENABLE
+            printf("spi rx: ");
+    		 for(int i = 0; i < rxSize; i++){
+    		    printf("%02X ", pRxData[i]);
+                if(i % 32 == 31) printf("\n");
+            }
+            printf("\n");             
+#endif
         }
-        printf("\n");             
+        else{
+#if W25Q256_DBGINFO_GENERALCMD_ENABLE
+            printf("spi rx: ");
+    		 for(int i = 0; i < rxSize; i++){
+    		    printf("%02X ", pRxData[i]);
+                if(i % 32 == 31) printf("\n");
+            }
+            printf("\n");             
 #endif         
+        }
     }
 
     return true;
@@ -452,7 +481,7 @@ bool W25Q256_Read(uint8_t* pBuffer,uint32_t ReadAddr,uint16_t NumByteToRead)
 
 bool W25Q256_Read(uint8_t* pBuffer,uint32_t ReadAddr,uint16_t NumByteToRead)   
 {
-#if W25Q256_DBGINFO_CMD_ENABLE
+#if W25Q256_DBGINFO_READ_ENABLE
     printf("%s\n", __func__);
 #endif
     if(W25Q256_QPI_MODE){
@@ -592,7 +621,7 @@ bool W25Q256_Write_Page(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWr
 
 bool W25Q256_Write_PageBase(uint8_t* pBuffer,uint32_t WriteAddr,uint16_t NumByteToWrite)
 {
-#if W25Q256_DBGINFO_CMD_ENABLE
+#if W25Q256_DBGINFO_WRITE_ENABLE
     printf("%s\n", __func__);
 #endif
 	if(W25Q256_QPI_MODE){
@@ -791,14 +820,26 @@ bool W25Q256_XFER(uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize)
     uint8_t *txParaPtr = &pTxData[1];
     int txParaLen = txSize - 1;
 
-#if W25Q256_DBGINFO_CMD_ENABLE
-    printf(infoMsg("command:0x%x\r\n"), cmd);
+    if(cmd == W25X_FastReadData){
+#if W25Q256_DBGINFO_READ_ENABLE
+        printf(infoMsg("command:0x%x\r\n"), cmd);
 #endif
+    }
+    else if(cmd == W25X_PageProgram){
+#if W25Q256_DBGINFO_WRITE_ENABLE
+        printf(infoMsg("command:0x%x\r\n"), cmd);
+#endif
+    }
+    else{
+#if W25Q256_DBGINFO_CMD_ENABLE
+        printf(infoMsg("command:0x%x\r\n"), cmd);
+#endif
+    }
 
 #if 1
-    if(cmd == 0x0b){//fast read
+    if(cmd == W25X_FastReadData){//fast read
         uint32_t address = (txParaPtr[0] << 16) + (txParaPtr[1] << 8) + (txParaPtr[2] << 0); 
-#if W25Q256_DBGINFO_CMD_ENABLE
+#if W25Q256_DBGINFO_READ_ENABLE
         printf("addr=0x%x\n", (unsigned int)address);
 #endif
 
@@ -822,12 +863,12 @@ bool W25Q256_XFER(uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize)
 #endif
         return W25Q256_32KB_Block_Erase(address);
     }
-    else if(cmd == 0x02){//page program
+    else if(cmd == W25X_PageProgram){//page program
         int addrSize = 3;
         uint32_t address = (txParaPtr[0] << 16) + (txParaPtr[1] << 8) + (txParaPtr[2] << 0); 
         uint32_t dataLen = txParaLen - addrSize/*address*/;
         uint8_t *dataPtr = txParaPtr + addrSize;
-#if W25Q256_DBGINFO_CMD_ENABLE
+#if W25Q256_DBGINFO_WRITE_ENABLE
         printf("addr=0x%x, dataLen=%d\n", (unsigned int)address, (int)dataLen);
 #endif    
         return W25Q256_Write_PageBase(dataPtr, (unsigned int)address, (int)dataLen);

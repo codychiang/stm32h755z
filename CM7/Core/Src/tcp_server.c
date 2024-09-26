@@ -59,6 +59,7 @@ void tcp_server_init(void)
 
 static err_t tcp_server_accept(void *arg, struct tcp_pcb *new_pcb, err_t err)
 {
+
 	lwip_log("server accept \r\n");
 	tcp_write(new_pcb, resp, strlen(resp), 1);
 	tcp_err(new_pcb, server.error);
@@ -122,8 +123,8 @@ static err_t tcp_server_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p,
                 uint8_t *retData;
                 int retSize;
                 tcpCmdParser(tcp_rcv_cmd, tcp_rcv_cmd_idx, &retData, &retSize);
-                
-                //NVIC_DisableIRQ(ETH_IRQn);
+
+#if 1 
                 if(ERR_OK != tcp_write(tpcb, retData, retSize, 1)){
                     printf("tcp write fail, tcp_sndbuf=%d\n", tcp_sndbuf(tpcb));
                 }
@@ -132,6 +133,28 @@ static err_t tcp_server_receive(void *arg, struct tcp_pcb *tpcb, struct pbuf *p,
                         printf("tcp output fail\n");
                     }
                 }
+#else
+                //NVIC_DisableIRQ(ETH_IRQn);
+                int remainingSize = retSize;
+                uint8_t *remainingData = retData;
+                int trSize = 0;
+                while(remainingSize > 0){
+                    remainingData += trSize;
+                    trSize = (remainingSize > 1000)? 1000: remainingSize;
+                    remainingSize -= trSize;
+                    
+                    if(ERR_OK != tcp_write(tpcb, remainingData, trSize, 1)){
+                        printf("tcp write fail, tcp_sndbuf=%d\n", tcp_sndbuf(tpcb));
+                    }
+                    else{
+                        if(ERR_OK != tcp_output(tpcb)){
+                            printf("tcp output fail\n");
+                        }
+                    }
+                    osDelay(10);
+                }
+#endif
+
 #else
                 xSemaphoreTake(xLock, HAL_MAX_DELAY); 
                 gotValidCmd = true;

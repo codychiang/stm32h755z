@@ -49,10 +49,10 @@ bool checkProtocol(uint8_t *pCmd, int cmdSize)
 
 
 #define spiRcvData_maxSize (2100)
-uint8_t spiRcvData[spiRcvData_maxSize];
+volatile uint8_t spiRcvData[spiRcvData_maxSize];
 
 #define tcp_snd_cmd_maxSize (2000 + 100)
-uint8_t tcp_snd_cmd[tcp_snd_cmd_maxSize];
+volatile uint8_t tcp_snd_cmd[tcp_snd_cmd_maxSize];
 int tcp_snd_cmd_idx = 0;
 bool tcpEncodeRspData(uint8_t tag, uint16_t errorCode, uint8_t *pCmd, uint8_t *pData, int dataSize, uint8_t **retData, int *retSize)
 {
@@ -100,7 +100,7 @@ bool tcpCmdParser(uint8_t *pCmd, int cmdSize, uint8_t **retData, int *retSize)
             }sSpiOption;
             memcpy(&sSpiOption, data, sizeof(sSpiOption));
             printf("SPI_OPTIONS=>channel=%d, clock=%d, mode=%d\n", sSpiOption.channel, sSpiOption.clock, sSpiOption.mode);
-            //W25Q256_QspiDriver_SetPara(sSpiOption.clock, sSpiOption.mode);
+            W25Q256_QspiDriver_SetPara(sSpiOption.clock, sSpiOption.mode);
             
             tcpEncodeRspData(tag, CMD_ERR_OK, tcp_snd_cmd, 0, 0, retData, retSize);
         }
