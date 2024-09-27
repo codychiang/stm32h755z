@@ -61,6 +61,8 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *new_pcb, err_t err)
 {
 
 	lwip_log("server accept \r\n");
+    tcp_set_flags(new_pcb, TF_NODELAY);
+
 	tcp_write(new_pcb, resp, strlen(resp), 1);
 	tcp_err(new_pcb, server.error);
 	tcp_recv(new_pcb, server.receive);
