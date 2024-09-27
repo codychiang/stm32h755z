@@ -28,7 +28,8 @@
 #include "ethernetif.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "stdio.h"
+#include "stdbool.h"
 /* USER CODE END 0 */
 /* Private function prototypes -----------------------------------------------*/
 static void ethernet_link_status_updated(struct netif *netif);
@@ -36,7 +37,7 @@ static void ethernet_link_status_updated(struct netif *netif);
 void Error_Handler(void);
 
 /* USER CODE BEGIN 1 */
-
+void notify_EthState(bool isUp);
 /* USER CODE END 1 */
 
 /* Variables Initialization */
@@ -122,11 +123,15 @@ static void ethernet_link_status_updated(struct netif *netif)
   if (netif_is_up(netif))
   {
 /* USER CODE BEGIN 5 */
+    printf("eth is up\n");
+    notify_EthState(true);
 /* USER CODE END 5 */
   }
   else /* netif is down */
   {
 /* USER CODE BEGIN 6 */
+    printf("eth is down\n");
+    notify_EthState(false);
 /* USER CODE END 6 */
   }
 }

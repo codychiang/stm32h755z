@@ -51,6 +51,9 @@
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
 int test1 = 0;
+uint8_t gLedKind = 0;
+extern struct netif gnetif;
+SemaphoreHandle_t mutex_LedKind;
 /* USER CODE END Variables */
 osThreadId defaultTaskHandle;
 osThreadId ledTaskHandle;
@@ -61,6 +64,8 @@ osStaticSemaphoreDef_t myBinarySem_lwipInitControlBlock;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
+void setLEDKind(uint8_t ledKind);
+uint8_t getLEDKind();
 
 /* USER CODE END FunctionPrototypes */
 
@@ -203,17 +208,33 @@ void StartDefaultTask(void const * argument)
 void StartLedTask(void const * argument)
 {
   /* USER CODE BEGIN StartLedTask */
-  uint8_t LD_STATE = 0;
+  uint8_t RUNNING_LED_STATE = 0;
+  uint8_t ledKind = 0;
+  mutex_LedKind = xSemaphoreCreateMutex();
+  setLEDKind( netif_is_link_up(&gnetif)? 1: 0 );
   /* Infinite loop */
   for(;;)
   {
-	HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, (GPIO_PinState)LD_STATE);
-	osDelay(500);
-	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, (GPIO_PinState)LD_STATE);
-	osDelay(500);
-	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, (GPIO_PinState)LD_STATE);
-	osDelay(500);
-	LD_STATE ^= 1;
+    ledKind = getLEDKind();
+    if(ledKind == 1){
+    	HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, (GPIO_PinState)RUNNING_LED_STATE);
+    	osDelay(500);
+    	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, (GPIO_PinState)RUNNING_LED_STATE);
+    	osDelay(500);
+    	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, (GPIO_PinState)RUNNING_LED_STATE);
+    	osDelay(500);
+    	RUNNING_LED_STATE ^= 1;
+    }
+    else{
+    	HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, (GPIO_PinState)1);
+    	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, (GPIO_PinState)1);
+    	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, (GPIO_PinState)1);
+    	osDelay(500);
+    	HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, (GPIO_PinState)0);
+    	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, (GPIO_PinState)0);
+    	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, (GPIO_PinState)0);
+    	osDelay(500);
+    }
   }
   /* USER CODE END StartLedTask */
 }
@@ -404,5 +425,30 @@ void StartInFlashTask(void const * argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+void setLEDKind(uint8_t ledKind)
+{
+    xSemaphoreTake(mutex_LedKind, portMAX_DELAY);
+    gLedKind = ledKind;
+    xSemaphoreGive(mutex_LedKind);
+}
 
+uint8_t getLEDKind()
+{
+    uint8_t ledKind;
+    xSemaphoreTake(mutex_LedKind, portMAX_DELAY);
+    ledKind = gLedKind;
+    xSemaphoreGive(mutex_LedKind);
+    
+    return ledKind;
+}
+
+void notify_EthState(bool isUp)
+{
+    if(isUp){
+        setLEDKind(1);
+    }
+    else{
+        setLEDKind(0);
+    }
+}
 /* USER CODE END Application */

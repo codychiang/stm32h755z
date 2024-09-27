@@ -292,6 +292,11 @@ void W25Q256_Write_Disable(void)
 bool W25Q256_GeneralCmd(uint8_t cmd, uint32_t instructionMode, uint32_t dataMode, uint32_t addressMode, uint32_t addressSize, 
                         uint32_t address, uint8_t dummyCycles, uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize)
 {
+#if PseudoFlash
+    memset(pTxData, 0, rxSize);
+    return true;
+#endif
+
     QSPI_CommandTypeDef s_command;
     s_command.Instruction       = cmd;
     s_command.Address           = address;
