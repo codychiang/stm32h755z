@@ -70,9 +70,6 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *new_pcb, err_t err)
 	return ERR_OK;
 }
 
-
-
-
 bool gotValidCmd = false;
 struct tcp_pcb *gtpcb = 0;
 

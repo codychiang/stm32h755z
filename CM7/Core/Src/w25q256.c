@@ -509,15 +509,15 @@ bool W25Q256_Quad_Read(uint8_t* pRxData,uint32_t ReadAddr,uint16_t rxSize)
     QSPI_CommandTypeDef s_command;
     s_command.Instruction       = W25X_QuadFastReadData;
     s_command.Address           = ReadAddr;
-    s_command.DummyCycles       = 0;
+    s_command.DummyCycles       = 4;
     s_command.InstructionMode   = QSPI_INSTRUCTION_4_LINES;
     s_command.AddressMode       = QSPI_ADDRESS_4_LINES;
     s_command.AddressSize       = QSPI_ADDRESS_32_BITS;
     s_command.DataMode          = QSPI_DATA_4_LINES;
     s_command.SIOOMode          = QSPI_SIOO_INST_EVERY_CMD;
     s_command.AlternateByteMode = QSPI_ALTERNATE_BYTES_NONE;
-//    s_command.AlternateBytesSize = QSPI_ALTERNATE_BYTES_8_BITS;
-//    s_command.AlternateBytes = 0xF1;
+    s_command.AlternateBytesSize = QSPI_ALTERNATE_BYTES_NONE;
+    s_command.AlternateBytes = QSPI_ALTERNATE_BYTES_NONE;
     s_command.DdrMode           = QSPI_DDR_MODE_DISABLE;
     s_command.DdrHoldHalfCycle  = QSPI_DDR_HHC_ANALOG_DELAY;
     s_command.NbData            = rxSize;
@@ -842,7 +842,7 @@ bool W25Q256_XFER(uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize)
     }
 
 #if 1
-    if(cmd == W25X_FastReadData){//fast read
+    if(cmd == W25X_FastReadData || cmd == W25X_QuadFastReadData){//fast read
         uint32_t address = (txParaPtr[0] << 16) + (txParaPtr[1] << 8) + (txParaPtr[2] << 0); 
 #if W25Q256_DBGINFO_READ_ENABLE
         printf("addr=0x%x\n", (unsigned int)address);
@@ -854,21 +854,24 @@ bool W25Q256_XFER(uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize)
         return W25Q256_Read(pRxData, address, rxSize);
 #endif
     }
+#if 0//fail to use the cmd
     else if(cmd == 0xeb){//fast read
-        uint32_t address = (txParaPtr[0] << 24) + (txParaPtr[1] << 16) + (txParaPtr[2] << 8) + 0;
+        uint32_t address = (txParaPtr[0] << 16) + (txParaPtr[1] << 8) + (txParaPtr[2] << 0);
+        address = (address << 8) | 0xFF;
 #if W25Q256_DBGINFO_CMD_ENABLE
         printf("addr=0x%x\n", (unsigned int)address);
 #endif
         return W25Q256_Quad_Read(pRxData, address, rxSize);
     }
-    else if(cmd == 0x52){//32KB Block Erase
+#endif    
+    else if(cmd == W25X_32KB_BlockErase){//32KB Block Erase
         uint32_t address = (txParaPtr[0] << 16) + (txParaPtr[1] << 8) + (txParaPtr[2] << 0); 
 #if W25Q256_DBGINFO_CMD_ENABLE
         printf("addr=0x%x\n", (unsigned int)address);
 #endif
         return W25Q256_32KB_Block_Erase(address);
     }
-    else if(cmd == W25X_PageProgram){//page program
+    else if(cmd == W25X_PageProgram || cmd == W25X_QuadPageProgram){//page program
         int addrSize = 3;
         uint32_t address = (txParaPtr[0] << 16) + (txParaPtr[1] << 8) + (txParaPtr[2] << 0); 
         uint32_t dataLen = txParaLen - addrSize/*address*/;
@@ -878,8 +881,9 @@ bool W25Q256_XFER(uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize)
 #endif    
         return W25Q256_Write_PageBase(dataPtr, (unsigned int)address, (int)dataLen);
     }
+#if 0//fail to use the cmd
     else if(cmd == 0x32){//quad input page program
-        int addrSize = 4;
+        int addrSize = 3;
         uint32_t address = (txParaPtr[0] << 16) + (txParaPtr[1] << 8) + (txParaPtr[2] << 0); 
         uint32_t dataLen = txParaLen - addrSize/*address*/;
         uint8_t *dataPtr = txParaPtr + addrSize;
@@ -888,8 +892,9 @@ bool W25Q256_XFER(uint8_t *pTxData, int txSize, uint8_t *pRxData, int rxSize)
 #endif    
         return W25Q256_Quad_Write_PageBase(dataPtr, (unsigned int)address, (int)dataLen);
     }
+#endif    
 #if PseudoFlash
-    else if(cmd == 0x9F){
+    else if(cmd == W25X_JedecDeviceID){
         pRxData[0] = 0xEF;
         pRxData[1] = 0x40;
         pRxData[2] = 0x19;
